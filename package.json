@@ -1,0 +1,42 @@
+{
+  "name": "tuktuk-tracking-backend-api",
+  "version": "1.0.0",
+  "description": "This repo is for my Web API Coursework related to Tuk-Tuk tracking (Three-wheel)",
+  "main": "src/server.js",
+  "type": "module",
+  "scripts": {
+    "dev": "nodemon src/server.js",
+    "start": "node src/server.js",
+    "migrate:latest": "knex migrate:latest",
+    "migrate:rollback": "knex migrate:rollback",
+    "migrate:status": "knex migrate:list",
+    "seed:run": "knex seed:run",
+    "db:reset": "docker-compose down -v && docker-compose up -d"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Liviru-Nava/tuktuk-tracking-backend-api.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Liviru-Nava/tuktuk-tracking-backend-api/issues"
+  },
+  "homepage": "https://github.com/Liviru-Nava/tuktuk-tracking-backend-api#readme",
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "express-rate-limit": "^8.4.1",
+    "helmet": "^8.1.0",
+    "jsonwebtoken": "^9.0.3",
+    "knex": "^3.2.9",
+    "pg": "^8.20.0",
+    "uuid": "^14.0.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
+  }
+}
