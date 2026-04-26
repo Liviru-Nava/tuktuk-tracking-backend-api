@@ -141,6 +141,7 @@ vite.config.ts.timestamp-*
 # macOS
 .DS_Store
 
+
 # draw.io / diagrams.net backups and temporary files
 *.bkp
 *.dtmp
