@@ -9,14 +9,20 @@
 
 | Role Key | Description |
 |---|---|
-| `Public` | Unauthenticated access. Limited to read-only reference data (provinces). |
-| `Device` | Authenticated tracking device. Can only submit location pings for its assigned vehicle. |
-| `Officer` | Station-level police officer. Scoped to their assigned station/district. |
-| `Provincial` | Provincial-level officer (e.g., CID). Scoped to their assigned province. |
-| `Admin` | District or station administrator. Can manage local records and user accounts. |
-| `National Admin` | Police HQ / national-level administrator. Full system access. |
+| `Public` | Unauthenticated access. No access beyond the login endpoint. |
+| `Device` | Authenticated tracking device. Can only submit location pings. |
+| `HQ_SUPER_ADMIN` | Police HQ super administrator. Full system access, national jurisdiction. |
+| `HQ_OFFICER` | Police HQ officer. National jurisdiction, limited to assigned permissions. |
+| `PROVINCIAL_HEAD` | Provincial-level head. Can manage users within their province. |
+| `PROVINCIAL_OFFICER` | Provincial-level officer. Scoped to their assigned province. |
+| `DISTRICT_HEAD` | District-level head. Can manage users within their district. |
+| `DISTRICT_OFFICER` | District-level officer. Scoped to their assigned district. |
+| `STATION_HEAD` | Station-level head. Can manage users within their station. |
+| `STATION_OFFICER` | Station-level officer. Scoped to their assigned station. |
 
-> `Officer+` means the endpoint is accessible by Officer, Provincial, Admin, and National Admin. Results are further filtered by each user's `access_scope_type` and `access_ref_id`.
+> Access in the endpoint tables is expressed as a **permission string** (e.g. `vehicle:view`) rather than a role name. Every request is evaluated against two checks — (1) does the user's role carry the required permission, and (2) does the requested data fall within the user's office jurisdiction. Both must pass.
+
+> `Authenticated` means any valid JWT regardless of role.
 
 ---
 
@@ -30,151 +36,187 @@
 
 ---
 
-## 2. Users
+## 2. Provinces
 
-**Fields:** `user_id`, `badge_id`, `first_name`, `middle_name`, `surname`, `email_address`, `contact_no`, `role`, `access_scope`, `access_scope_type`, `access_ref_id`, `is_active`, `last_login_time`, `created_time`, `updated_time`
+> Read-only. Seeded once via migration script. Provinces are constitutionally defined — the Police Department has no authority to create or modify them. No POST, PUT, or DELETE endpoints exist.
+
+**Fields:** `province_id`, `province_name`, `province_code`, `created_time`
 
 | Method | Endpoint | Description | Access |
 |---|---|---|---|
-| `GET` | `/api/v1/users` | Returns paginated list of all users. Supports `?role=`, `?is_active=`, `?offset=`, `?limit=`. | National Admin |
-| `POST` | `/api/v1/users` | Creates a new user account. | National Admin |
-| `GET` | `/api/v1/users/{user-id}` | Returns a single user record with all fields above. | Admin / Self |
-| `PUT` | `/api/v1/users/{user-id}` | Full replacement update of a user record. | Admin |
-| `DELETE` | `/api/v1/users/{user-id}` | Soft deletes a user by setting `is_active = false`. | National Admin |
-| `POST` | `/api/v1/users/{user-id}/deactivate` | Sets `is_active = false` without a full PUT payload. | National Admin |
+| `GET` | `/api/v1/provinces` | Returns all 9 provinces. | Authenticated |
+| `GET` | `/api/v1/provinces/{province-id}` | Returns a single province record with all fields above. | Authenticated |
+| `GET` | `/api/v1/provinces/{province-id}/districts` | Returns all districts belonging to this province. | `district:view` |
 
 ---
 
-## 3. Owners
+## 3. Districts
 
-**Fields:** `owner_id`, `owner_firstname`, `owner_middlename`, `owner_surname`, `owner_nic`, `owner_contact`, `owner_address`, `created_time`, `updated_time`
+> Read-only. Seeded once via migration script. Districts are administratively defined — the Police Department has no authority to create or modify them. No POST, PUT, or DELETE endpoints exist.
+
+**Fields:** `district_id`, `province_id`, `district_name`, `district_code`, `created_time`
 
 | Method | Endpoint | Description | Access |
 |---|---|---|---|
-| `GET` | `/api/v1/owners` | Returns paginated list of all owners. Supports `?offset=`, `?limit=`. | Officer+ |
-| `POST` | `/api/v1/owners` | Registers a new vehicle owner. | Officer+ |
-| `GET` | `/api/v1/owners/{owner-id}` | Returns a single owner record with all fields above. | Officer+ |
-| `PUT` | `/api/v1/owners/{owner-id}` | Full replacement update of an owner record. | Officer+ |
-| `DELETE` | `/api/v1/owners/{owner-id}` | Removes an owner record with no active vehicles. | Admin |
-| `GET` | `/api/v1/owners/{owner-id}/vehicles` | Returns all vehicles registered under this owner. | Officer+ |
+| `GET` | `/api/v1/districts` | Returns all 25 districts. Supports `?province-id=`, `?offset=`, `?limit=`. | Authenticated |
+| `GET` | `/api/v1/districts/{district-id}` | Returns a single district record with all fields above. | Authenticated |
+| `GET` | `/api/v1/districts/{district-id}/offices` | Returns all offices within this district. | `office:view` |
 
 ---
 
-## 4. Vehicles
+## 4. Offices
 
-**Fields:** `vehicle_id`, `vehicle_reg_no`, `chassis_number`, `make_of_vehicle`, `model_of_vehicle`, `color_of_vehicle`, `fuel_type`, `year_of_manufacture`, `vehicle_reg_date`, `status_by_police`, `created_time`, `updated_time`
+**Fields:** `office_id`, `office_code`, `office_name`, `office_type`, `jurisdiction_type`, `jurisdiction_ref_id`, `office_address`, `office_contact`, `status`, `created_time`, `updated_time`
 
 | Method | Endpoint | Description | Access |
 |---|---|---|---|
-| `GET` | `/api/v1/vehicles` | Returns paginated list of vehicles. Supports `?province-id=`, `?district-id=`, `?station-id=`, `?status=`, `?offset=`, `?limit=`. | Officer+ |
-| `POST` | `/api/v1/vehicles` | Registers a new vehicle. | Officer+ |
-| `GET` | `/api/v1/vehicles/{vehicle-id}` | Returns a single vehicle record with all fields above. | Officer+ |
-| `PUT` | `/api/v1/vehicles/{vehicle-id}` | Full replacement update of a vehicle record. | Officer+ |
-| `DELETE` | `/api/v1/vehicles/{vehicle-id}` | Removes a vehicle with no active device or driver assignment. | Admin |
-| `GET` | `/api/v1/vehicles/{vehicle-id}/profile` | Composite — returns vehicle + owner + current driver + assigned station + active device. | Officer+ |
-| `GET` | `/api/v1/vehicles/{vehicle-id}/drivers` | Returns all driver assignment records for this vehicle. | Officer+ |
-| `GET` | `/api/v1/vehicles/{vehicle-id}/tracking-devices` | Returns all tracking devices fitted to this vehicle. | Officer+ |
-| `GET` | `/api/v1/vehicles/{vehicle-id}/location-pings` | Returns GPS location history. Supports `?from=`, `?to=` (ISO 8601), `?offset=`, `?limit=`. | Officer+ |
-| `GET` | `/api/v1/vehicles/{vehicle-id}/last-location` | Returns the single most recent GPS ping for this vehicle. | Officer+ |
-| `POST` | `/api/v1/vehicles/{vehicle-id}/update-status` | Updates `status_by_police` only. Generates an audit log entry. | Officer+ |
-| `GET` | `/api/v1/vehicles/{vehicle-id}/assignments/{assignment-id}` | Returns a single assignment record with `assignment_id`, `assigned_time`, `unassigned_time`, `is_driver_owner`, `is_current_driver`. | Officer+ |
+| `GET` | `/api/v1/offices` | Returns offices within caller's jurisdiction. Supports `?jurisdiction-type=`, `?office-type=`, `?district-id=`, `?province-id=`, `?offset=`, `?limit=`. | `office:view` |
+| `POST` | `/api/v1/offices` | Creates a new office. | `office:create` |
+| `GET` | `/api/v1/offices/{office-id}` | Returns a single office record with all fields above. | `office:view` |
+| `PUT` | `/api/v1/offices/{office-id}` | Full replacement update of an office record. | `office:edit` |
+| `DELETE` | `/api/v1/offices/{office-id}` | Transitions office `status` to `CLOSED`. | `office:delete` |
+| `GET` | `/api/v1/offices/{office-id}/users` | Returns all users belonging to this office. | `user:view` |
 
 ---
 
-## 5. Drivers
+## 5. Roles
 
-**Fields:** `driver_id`, `first_name`, `middle_name`, `surname`, `address`, `driver_license_no`, `license_expiry_date`, `driver_gender`, `status_by_police`, `created_time`, `updated_time`
+> `GET` is open to all authenticated users. `PUT` is restricted to `HQ_SUPER_ADMIN` only and updates `permissions` array and `role_description` only. `role_name` and `user_management_scope` are not editable via API. No POST or DELETE — role creation and removal is a deployment-time concern.
+
+**Fields:** `role_id`, `role_name`, `role_description`, `user_management_scope`, `permissions`
 
 | Method | Endpoint | Description | Access |
 |---|---|---|---|
-| `GET` | `/api/v1/drivers` | Returns paginated list of drivers. Supports `?status=`, `?offset=`, `?limit=`. | Officer+ |
-| `POST` | `/api/v1/drivers` | Registers a new driver. | Officer+ |
-| `GET` | `/api/v1/drivers/{driver-id}` | Returns a single driver record with all fields above. | Officer+ |
-| `PUT` | `/api/v1/drivers/{driver-id}` | Full replacement update of a driver record. | Officer+ |
-| `DELETE` | `/api/v1/drivers/{driver-id}` | Removes a driver with no active vehicle assignment. | Admin |
-| `POST` | `/api/v1/drivers/{driver-id}/update-status` | Updates `status_by_police` or `license_expiry_date` only. Generates an audit log entry. | Officer+ |
+| `GET` | `/api/v1/roles` | Returns all roles with their permission arrays and management scope. | Authenticated |
+| `GET` | `/api/v1/roles/{role-id}` | Returns a single role record with full permission list. | Authenticated |
+| `PUT` | `/api/v1/roles/{role-id}` | Updates `permissions` array and `role_description` only. | `HQ_SUPER_ADMIN` |
 
 ---
 
-## 6. Police Stations
+## 6. Users
 
-**Fields:** `station_id`, `station_name`, `station_contact`, `station_address`, `station_loc_latitude`, `station_loc_longitude`, `station_boundary`, `created_time`
+**Fields:** `user_id`, `username`, `fullname`, `email_address`, `contact_no`, `badge_id`, `office_id`, `role_id`, `status`, `last_login_time`, `created_time`, `updated_time`
 
 | Method | Endpoint | Description | Access |
 |---|---|---|---|
-| `GET` | `/api/v1/police-stations` | Returns paginated list of stations. Supports `?district-id=`, `?offset=`, `?limit=`. | Officer+ |
-| `POST` | `/api/v1/police-stations` | Creates a new police station. | National Admin |
-| `GET` | `/api/v1/police-stations/{station-id}` | Returns a single station record with all fields above. | Officer+ |
-| `PUT` | `/api/v1/police-stations/{station-id}` | Full replacement update of a station record. | National Admin |
-| `DELETE` | `/api/v1/police-stations/{station-id}` | Removes a station with no assigned users or vehicles. | National Admin |
-| `GET` | `/api/v1/police-stations/{station-id}/vehicles` | Returns all vehicles under this station's jurisdiction. | Officer+ |
+| `GET` | `/api/v1/users` | Returns paginated list of users within caller's jurisdiction. Supports `?office-id=`, `?role-id=`, `?status=`, `?offset=`, `?limit=`. | `user:view` |
+| `POST` | `/api/v1/users` | Creates a new user account within caller's management scope. | `user:create` |
+| `GET` | `/api/v1/users/{user-id}` | Returns a single user record with all fields above. | `user:view` / Self |
+| `PUT` | `/api/v1/users/{user-id}` | Full replacement update of a user record. | `user:edit` |
+| `DELETE` | `/api/v1/users/{user-id}` | Transitions user `status` to `INACTIVE`. | `user:deactivate` |
+| `POST` | `/api/v1/users/{user-id}/deactivate` | Transitions user `status` to `INACTIVE` without a full PUT payload. | `user:deactivate` |
 
 ---
 
-## 7. Provinces
+## 7. Owners
 
-**Fields:** `province_id`, `province_name`, `province_code`, `province_boundary`, `created_time`
+**Fields:** `owner_id`, `owner_fullname`, `owner_identity_no`, `owner_id_type`, `owner_gender`, `owner_contact`, `owner_address`, `status`, `created_time`, `updated_time`
 
 | Method | Endpoint | Description | Access |
 |---|---|---|---|
-| `GET` | `/api/v1/provinces` | Returns list of all 9 provinces. | Public |
-| `POST` | `/api/v1/provinces` | Creates a new province record. | National Admin |
-| `GET` | `/api/v1/provinces/{province-id}` | Returns a single province record with all fields above. | Public |
-| `PUT` | `/api/v1/provinces/{province-id}` | Full replacement update of a province record. | National Admin |
-| `GET` | `/api/v1/provinces/{province-id}/districts` | Returns all districts belonging to this province. | Officer+ |
+| `GET` | `/api/v1/owners` | Returns paginated list of all owners. Supports `?status=`, `?offset=`, `?limit=`. | `owner:view` |
+| `POST` | `/api/v1/owners` | Registers a new vehicle owner. | `owner:create` |
+| `GET` | `/api/v1/owners/{owner-id}` | Returns a single owner record with all fields above. | `owner:view` |
+| `PUT` | `/api/v1/owners/{owner-id}` | Full replacement update of an owner record. | `owner:edit` |
+| `DELETE` | `/api/v1/owners/{owner-id}` | Transitions owner `status` to `INACTIVE`. | `owner:delete` |
+| `GET` | `/api/v1/owners/{owner-id}/vehicles` | Returns all vehicles registered under this owner. | `owner:view`, `vehicle:view` |
 
 ---
 
-## 8. Districts
+## 8. Vehicles
 
-**Fields:** `district_id`, `district_name`, `district_code`, `district_boundary`, `created_time`
+**Fields:** `vehicle_id`, `owner_id`, `district_id`, `device_id`, `license_plate_no`, `vehicle_reg_no`, `chassis_number`, `engine_number`, `make_of_vehicle`, `model_of_vehicle`, `manufacture_year`, `vehicle_colour`, `fuel_type`, `is_diplomatic`, `vehicle_reg_date`, `status`, `created_time`, `updated_time`
 
 | Method | Endpoint | Description | Access |
 |---|---|---|---|
-| `GET` | `/api/v1/districts` | Returns list of all 25 districts. Supports `?province-id=`, `?offset=`, `?limit=`. | Officer+ |
-| `POST` | `/api/v1/districts` | Creates a new district record. | National Admin |
-| `GET` | `/api/v1/districts/{district-id}` | Returns a single district record with all fields above. | Officer+ |
-| `PUT` | `/api/v1/districts/{district-id}` | Full replacement update of a district record. | National Admin |
-| `GET` | `/api/v1/districts/{district-id}/police-stations` | Returns all stations within this district. | Officer+ |
+| `GET` | `/api/v1/vehicles` | Returns paginated list of vehicles filtered by caller's jurisdiction. Supports `?province-id=`, `?district-id=`, `?status=`, `?reg-no=`, `?owner-id=`, `?offset=`, `?limit=`. | `vehicle:view` |
+| `POST` | `/api/v1/vehicles` | Registers a new vehicle. | `vehicle:create` |
+| `GET` | `/api/v1/vehicles/{vehicle-id}` | Returns a single vehicle record with all fields above. | `vehicle:view` |
+| `PUT` | `/api/v1/vehicles/{vehicle-id}` | Full replacement update of a vehicle record. | `vehicle:edit` |
+| `DELETE` | `/api/v1/vehicles/{vehicle-id}` | Transitions vehicle `status` to `DEREGISTERED`. | `vehicle:delete` |
+| `GET` | `/api/v1/vehicles/{vehicle-id}/profile` | Composite — returns vehicle + owner + current driver + active device details. | `vehicle:view` |
+| `GET` | `/api/v1/vehicles/{vehicle-id}/drivers` | Returns full driver assignment history for this vehicle. | `assignment:view` |
+| `GET` | `/api/v1/vehicles/{vehicle-id}/assignments/{assignment-id}` | Returns a single assignment record with `assignment_id`, `assigned_time`, `unassigned_time`, `is_driver_owner`, `is_current_driver`. | `assignment:view` |
+| `GET` | `/api/v1/vehicles/{vehicle-id}/location-pings` | Returns GPS location history. Supports `?from=`, `?to=` (ISO 8601), `?offset=`, `?limit=`. | `location:view_history` |
+| `GET` | `/api/v1/vehicles/{vehicle-id}/last-location` | Returns the single most recent GPS ping for this vehicle via linked `device_id`. | `location:view_live` |
+| `POST` | `/api/v1/vehicles/{vehicle-id}/change-status` | Updates `status` field only — `ACTIVE`, `SUSPENDED`, `FLAGGED`. | `vehicle:change_status` |
 
 ---
 
-## 9. Tracking Devices
+## 9. Drivers
 
-**Fields:** `device_id`, `device_serial_no`, `device_status`, `is_active`, `created_time`, `updated_time`
+**Fields:** `driver_id`, `driver_fullname`, `driver_identity_no`, `driver_id_type`, `date_of_birth`, `driver_gender`, `driver_contact_no`, `address`, `driver_license_no`, `license_expiry_date`, `status`, `created_time`, `updated_time`
 
 | Method | Endpoint | Description | Access |
 |---|---|---|---|
-| `GET` | `/api/v1/tracking-devices` | Returns paginated list of devices. Supports `?vehicle-id=`, `?is_active=`, `?offset=`, `?limit=`. | Officer+ |
-| `POST` | `/api/v1/tracking-devices` | Registers a new tracking device. | Admin |
-| `GET` | `/api/v1/tracking-devices/{device-id}` | Returns a single device record with all fields above. | Officer+ |
-| `PUT` | `/api/v1/tracking-devices/{device-id}` | Full replacement update of a device record. | Admin |
-| `DELETE` | `/api/v1/tracking-devices/{device-id}` | Removes a device where `is_active = false`. | Admin |
-| `GET` | `/api/v1/tracking-devices/{device-id}/status` | Composite — returns device record + most recent location ping. | Officer+ |
-| `GET` | `/api/v1/tracking-devices/{device-id}/location-pings` | Returns all pings from this device. Supports `?from=`, `?to=`, `?offset=`, `?limit=`. | Officer+ |
-| `POST` | `/api/v1/tracking-devices/{device-id}/toggle-active` | Toggles the `is_active` flag on a device. | Admin |
+| `GET` | `/api/v1/drivers` | Returns paginated list of drivers. Supports `?status=`, `?offset=`, `?limit=`. | `driver:view` |
+| `POST` | `/api/v1/drivers` | Registers a new driver. | `driver:create` |
+| `GET` | `/api/v1/drivers/{driver-id}` | Returns a single driver record with all fields above. | `driver:view` |
+| `PUT` | `/api/v1/drivers/{driver-id}` | Full replacement update of a driver record. | `driver:edit` |
+| `DELETE` | `/api/v1/drivers/{driver-id}` | Transitions driver `status` to `SUSPENDED`. | `driver:delete` |
+| `POST` | `/api/v1/drivers/{driver-id}/change-status` | Updates `status` field only — `ACTIVE`, `SUSPENDED`, `BLACKLISTED`. | `driver:change_status` |
 
 ---
 
-## 10. Location Pings
+## 10. Tracking Devices
 
-**Fields:** `ping_id`, `latitude`, `longitude`, `speed_kmh`, `device_battery`, `ping_timestamp`
+**Fields:** `device_id`, `device_serial_no`, `device_status`, `created_time`, `updated_time`
 
 | Method | Endpoint | Description | Access |
 |---|---|---|---|
-| `POST` | `/api/v1/location-pings` | Device submits a new GPS ping. Authenticated by device token. | Device |
-| `GET` | `/api/v1/location-pings/{ping-id}` | Returns a single ping record with all fields above. | Officer+ |
+| `GET` | `/api/v1/tracking-devices` | Returns paginated list of devices. Supports `?vehicle-id=`, `?device-status=`, `?offset=`, `?limit=`. | `device:view` |
+| `POST` | `/api/v1/tracking-devices` | Registers a new tracking device. | `device:create` |
+| `GET` | `/api/v1/tracking-devices/{device-id}` | Returns a single device record with all fields above. | `device:view` |
+| `PUT` | `/api/v1/tracking-devices/{device-id}` | Full replacement update of a device record. | `device:edit` |
+| `DELETE` | `/api/v1/tracking-devices/{device-id}` | Transitions device `device_status` to `DECOMMISSIONED`. | `device:delete` |
+| `GET` | `/api/v1/tracking-devices/{device-id}/status` | Composite — returns device record + most recent location ping. | `device:view`, `location:view_live` |
+| `GET` | `/api/v1/tracking-devices/{device-id}/location-pings` | Returns all pings from this device. Supports `?from=`, `?to=`, `?offset=`, `?limit=`. | `location:view_history` |
+| `POST` | `/api/v1/tracking-devices/{device-id}/change-status` | Updates `device_status` field only — `ACTIVE`, `INACTIVE`, `FAULTY`, `DECOMMISSIONED`. | `device:edit` |
 
 ---
 
-## 11. Controllers
+## 11. Location Pings
+
+> Append-only. No UPDATE or DELETE endpoints. `ping_timestamp` is the authoritative time record.
+
+**Fields:** `ping_id`, `device_id`, `latitude`, `longitude`, `speed_kmh`, `device_battery`, `ping_timestamp`
 
 | Method | Endpoint | Description | Access |
 |---|---|---|---|
-| `POST` | `/api/v1/assign-driver` | Atomically assigns a driver to a vehicle, closes any existing active assignment. Accepts `vehicle_id`, `driver_id`, `is_driver_owner`. | Officer+ |
-| `POST` | `/api/v1/unassign-driver` | Closes the active driver assignment by setting `unassigned_time`. Accepts `vehicle_id`. | Officer+ |
-| `POST` | `/api/v1/assign-vehicle-to-station` | Assigns a vehicle to a station jurisdiction. Accepts `vehicle_id`, `station_id`. | Officer+ |
-| `POST` | `/api/v1/register-vehicle` | Atomically creates a vehicle, links it to a district, and links or creates an owner. Accepts full vehicle payload + `owner_id` + `district_id`. | Officer+ |
+| `POST` | `/api/v1/location-pings` | Device submits a new GPS ping. Authenticated by device token. | Device Token |
+| `GET` | `/api/v1/location-pings/{ping-id}` | Returns a single ping record with all fields above. | `location:view_history` |
+
+---
+
+## 12. Controllers
+
+> Atomic multi-entity operations. POST only. Named as verbs per WSO2 section 5.1. No controller may be split across separate calls without risking data inconsistency.
+
+| Method | Endpoint | Description | Access |
+|---|---|---|---|
+| `POST` | `/api/v1/assign-driver` | Atomically closes previous active assignment and opens new one. Accepts `vehicle_id`, `driver_id`, `is_driver_owner`. | `assignment:create` |
+| `POST` | `/api/v1/unassign-driver` | Closes active assignment by setting `unassigned_time` and `is_current_driver = false`. Accepts `vehicle_id`. | `assignment:close` |
+| `POST` | `/api/v1/assign-device` | Links a tracking device to a vehicle by updating `device_id` on the vehicle record. Accepts `vehicle_id`, `device_id`. | `device:assign_to_vehicle` |
+
+---
+
+## Summary Count
+
+| # | Resource Group | GET | POST | PUT | DELETE | Total |
+|---|---|---|---|---|---|---|
+| 1 | Authentication | 0 | 3 | 0 | 0 | **3** |
+| 2 | Provinces | 3 | 0 | 0 | 0 | **3** |
+| 3 | Districts | 3 | 0 | 0 | 0 | **3** |
+| 4 | Offices | 3 | 1 | 1 | 1 | **6** |
+| 5 | Roles | 2 | 0 | 1 | 0 | **3** |
+| 6 | Users | 2 | 2 | 1 | 1 | **6** |
+| 7 | Owners | 3 | 1 | 1 | 1 | **6** |
+| 8 | Vehicles | 7 | 2 | 1 | 1 | **11** |
+| 9 | Drivers | 2 | 2 | 1 | 1 | **6** |
+| 10 | Tracking Devices | 4 | 2 | 1 | 1 | **8** |
+| 11 | Location Pings | 1 | 1 | 0 | 0 | **2** |
+| 12 | Controllers | 0 | 3 | 0 | 0 | **3** |
+| | **Total** | **30** | **17** | **7** | **6** | **60** |
 
 ---
 
@@ -184,11 +226,15 @@
 |---|---|---|---|
 | `?offset=` | Integer | All collections | Pagination start position (default: 0) |
 | `?limit=` | Integer | All collections | Max records returned (default: 20, max: 100) |
-| `?province-id=` | UUID | `/vehicles`, `/districts` | Filter by province |
-| `?district-id=` | UUID | `/vehicles`, `/police-stations` | Filter by district |
-| `?station-id=` | UUID | `/vehicles` | Filter by station |
-| `?status=` | String | `/vehicles`, `/drivers` | Filter by `status_by_police` value |
-| `?is_active=` | Boolean | `/tracking-devices` | Filter active or inactive devices |
+| `?province-id=` | UUID | `/vehicles`, `/districts`, `/offices` | Filter by province |
+| `?district-id=` | UUID | `/vehicles`, `/offices` | Filter by district |
+| `?office-id=` | UUID | `/users` | Filter users by office |
+| `?role-id=` | UUID | `/users` | Filter users by role |
+| `?owner-id=` | UUID | `/vehicles` | Filter vehicles by owner |
+| `?reg-no=` | String | `/vehicles` | Partial or exact plate number search |
+| `?status=` | String | `/vehicles`, `/drivers`, `/owners`, `/users` | Filter by `status` value |
+| `?device-status=` | String | `/tracking-devices` | Filter by `device_status` value |
+| `?office-type=` | String | `/offices` | Filter by `office_type` value |
+| `?jurisdiction-type=` | String | `/offices` | Filter by `jurisdiction_type` value |
 | `?from=` | ISO 8601 | `/location-pings` | Start of time window |
 | `?to=` | ISO 8601 | `/location-pings` | End of time window |
-| `?role=` | String | `/users` | Filter users by role |
