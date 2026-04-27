@@ -6,8 +6,8 @@ import { validateLogin, validateRefresh } from '../middleware/validateMiddleware
 
 const router = Router();
 
-router.post('/login',   validateLogin,   authController.login);
+router.post('/login', validateLogin, authController.login);
 router.post('/refresh', validateRefresh, authController.refresh);
-router.post('/logout',  authenticate,    authController.logout);
+router.post('/logout', authenticate, authController.logout);
 
 export default router;

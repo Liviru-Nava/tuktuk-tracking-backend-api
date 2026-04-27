@@ -4,6 +4,8 @@ import cors      from 'cors';
 import rateLimit from 'express-rate-limit';
 import cookieParser from 'cookie-parser';
 import authRoutes from '../routes/authRoutes.js';
+import provinceRoutes from '../routes/provinceRoutes.js';
+import districtRoutes from '../routes/districtRoutes.js';
 
 const app = express();
 app.use(helmet());
@@ -33,6 +35,8 @@ app.use(cookieParser());
 
 //main route definition
 app.use('/api/v1/auth', authLimiter, authRoutes);
+app.use('/api/v1/provinces', provinceRoutes);
+app.use('/api/v1/districts', districtRoutes);
 
 //handle 404 not found cases
 app.use((req, res) => {
