@@ -13,3 +13,12 @@ export const sendError = (response, statusCode, message, errors = null) => {
     if (errors !== null) body.errors = errors;
     return response.status(statusCode).json(body);
 };
+
+//collection response format for most GETs
+export const sendCollection = (res, statusCode, message, collection) => {
+  return res.status(statusCode).json({
+    success: true,
+    message,
+    collection,
+  });
+};
