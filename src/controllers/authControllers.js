@@ -2,6 +2,9 @@
 
 import * as authService from '../services/authServices.js';
 import { sendSuccess, sendError } from '../utils/responseUtils.js';
+import { getRefreshTokenExpiryMaxAge } from '../utils/jwtUtils.js';
+import dotenv from 'dotenv';
+dotenv.config();
 
 
 //login controller
@@ -15,7 +18,7 @@ export async function login(request, response) {
         httpOnly: true,
         secure:   process.env.NODE_ENV === 'production',
         sameSite: 'strict',
-        maxAge:   1 * 24 * 60 * 60 * 1000, // 1 day in ms
+        maxAge:   getRefreshTokenExpiryMaxAge(),
         });
 
         return sendSuccess(response, 200, 'Login successful', {
@@ -48,7 +51,7 @@ export async function refresh(request, response) {
       httpOnly: true,
       secure:   process.env.NODE_ENV === 'production',
       sameSite: 'strict',
-      maxAge:   1 * 24 * 60 * 60 * 1000, // 1 day in ms
+      maxAge:   getRefreshTokenExpiryMaxAge(),
     });
 
     return sendSuccess(response, 200, 'Token refreshed', {

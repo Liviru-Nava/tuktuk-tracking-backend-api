@@ -5,6 +5,8 @@
 // All three components are needed for decryption.
 
 import crypto from 'crypto';
+import dotenv from 'dotenv';
+dotenv.config();
 
 const ALGORITHM  = 'aes-256-gcm';
 const IV_LENGTH  = 12;
@@ -28,14 +30,14 @@ function getKey() {
 export function encrypt(plaintext) {
   if (plaintext === null || plaintext === undefined) return null;
 
-  const key        = getKey();
-  const iv         = crypto.randomBytes(IV_LENGTH);
-  const cipher     = crypto.createCipheriv(ALGORITHM, key, iv, { authTagLength: TAG_LENGTH });
-  const encrypted  = Buffer.concat([
+  const key = getKey();
+  const iv = crypto.randomBytes(IV_LENGTH);
+  const cipher = crypto.createCipheriv(ALGORITHM, key, iv, { authTagLength: TAG_LENGTH });
+  const encrypted = Buffer.concat([
     cipher.update(String(plaintext), 'utf8'),
     cipher.final(),
   ]);
-  const authTag    = cipher.getAuthTag();
+  const authTag = cipher.getAuthTag();
 
   return [
     iv.toString('base64'),
@@ -56,10 +58,10 @@ export function decrypt(ciphertext) {
     throw new Error('Invalid ciphertext format. Expected "iv:tag:data".');
   }
 
-  const key      = getKey();
-  const iv       = Buffer.from(ivB64, 'base64');
-  const authTag  = Buffer.from(tagB64, 'base64');
-  const data     = Buffer.from(dataB64, 'base64');
+  const key = getKey();
+  const iv = Buffer.from(ivB64, 'base64');
+  const authTag = Buffer.from(tagB64, 'base64');
+  const data = Buffer.from(dataB64, 'base64');
 
   const decipher = crypto.createDecipheriv(ALGORITHM, key, iv, { authTagLength: TAG_LENGTH });
   decipher.setAuthTag(authTag);

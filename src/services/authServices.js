@@ -4,8 +4,9 @@
 import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import * as authRepo   from '../repositories/authRepository.js';
-import { signAccessToken, signRefreshToken } from '../utils/jwtUtils.js';
+import { signAccessToken, signRefreshToken, getRefreshTokenExpiryDate } from '../utils/jwtUtils.js';
 import { decrypt, ENCRYPTED_FIELDS } from '../utils/encryption.js';
+import { verifyRefreshToken } from '../utils/jwtUtils.js';
 
 // Create the JWT payload which is embedded in every access token
 function buildTokenPayload(user) {
@@ -45,14 +46,13 @@ export async function login(username, password) {
     }
 
     // 4. Generate tokens
-    const payload      = buildTokenPayload(user);
-    const accessToken  = signAccessToken(payload);
-    const rawRefresh   = crypto.randomBytes(64).toString('hex');
+    const payload = buildTokenPayload(user);
+    const accessToken = signAccessToken(payload);
+    const rawRefresh = crypto.randomBytes(64).toString('hex');
     const refreshToken = signRefreshToken({ sub: user.user_id, token: rawRefresh });
 
     // 5. Calculate expiry and store hashed refresh token
-    const expiresAt = new Date();
-    expiresAt.setMinutes(expiresAt.getMinutes() + 1);
+    const expiresAt = getRefreshTokenExpiryDate();
     await authRepo.saveRefreshToken(user.user_id, rawRefresh, expiresAt);
 
     // 6. Update last login
@@ -84,48 +84,44 @@ export async function login(username, password) {
 }
 
 export async function refresh(incomingRefreshToken) {
-    // 1. Verify JWT signature and expiry
-    let decoded;
-    try {
-        const { verifyRefreshToken } = await import('../utils/jwtUtils.js');
-        decoded = verifyRefreshToken(incomingRefreshToken);
-    } catch {
-        throw { statusCode: 401, message: 'Invalid or expired refresh token' };
+  // 1. Verify JWT signature and expiry
+  let decoded;
+  try {
+    decoded = verifyRefreshToken(incomingRefreshToken);
+  } catch (err) {
+    if (err.name === 'TokenExpiredError') {
+      throw { statusCode: 401, message: 'Refresh token has expired. Please log in again.' };
     }
+    throw { statusCode: 401, message: 'Invalid refresh token' };
+  }
 
-    // 2. Check token exists in DB and is not revoked
-    const storedToken = await authRepo.findRefreshToken(decoded.token);
-    if (!storedToken) {
-        throw { statusCode: 401, message: 'Refresh token has been revoked or does not exist' };
-    }
+  // 2. Check token exists in DB and is not revoked
+  const storedToken = await authRepo.findRefreshToken(decoded.token);
+  if (!storedToken) {
+    throw { statusCode: 401, message: 'Refresh token has been revoked or does not exist' };
+  }
 
-    // 3. Revoke old token (token rotation for each refresh issues a new token)
-    await authRepo.revokeRefreshToken(decoded.token);
+  // 3. Get fresh user data using findUserById — no Knex in service layer
+  const user = await authRepo.findUserById(decoded.sub);
+  if (!user) {
+    throw { statusCode: 401, message: 'User no longer exists' };
+  }
+  if (user.status !== 'ACTIVE') {
+    throw { statusCode: 403, message: 'Account is no longer active' };
+  }
 
-    // 4. Get fresh user data (permissions may have changed since last login)
-    const user = await authRepo.findUserByUsername(
-        (await import('../config/knex.js')).default('users')
-        .where({ user_id: decoded.sub })
-        .select('username')
-        .first()
-        .then(r => r?.username)
-    );
+  // 4. Revoke old token AFTER confirming user is valid (token rotation)
+  await authRepo.revokeRefreshToken(decoded.token);
 
-    if (!user || user.status !== 'ACTIVE') {
-        throw { statusCode: 403, message: 'Account is no longer active' };
-    }
+  // 5. Issue new tokens
+  const payload      = buildTokenPayload(user);
+  const accessToken  = signAccessToken(payload);
+  const rawRefresh   = crypto.randomBytes(64).toString('hex');
+  const refreshToken = signRefreshToken({ sub: user.user_id, token: rawRefresh });
 
-    // 5. Issue new tokens
-    const payload      = buildTokenPayload(user);
-    const accessToken  = signAccessToken(payload);
-    const rawRefresh   = crypto.randomBytes(64).toString('hex');
-    const refreshToken = signRefreshToken({ sub: user.user_id, token: rawRefresh });
+  await authRepo.saveRefreshToken(user.user_id, rawRefresh, getRefreshTokenExpiryDate());
 
-    const expiresAt = new Date();
-    expiresAt.setMinutes(expiresAt.getMinutes() + 1);
-    await authRepo.saveRefreshToken(user.user_id, rawRefresh, expiresAt);
-
-    return { accessToken, refreshToken };
+  return { accessToken, refreshToken };
 }
 
 export async function logout(userId, refreshToken) {

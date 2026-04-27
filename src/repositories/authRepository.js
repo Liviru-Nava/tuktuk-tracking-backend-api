@@ -30,6 +30,32 @@ export async function findUserByUsername(username) {
         .first();
 }
 
+export async function findUserById(userId) {
+  return db('users')
+    .join('roles',   'users.role_id',   'roles.role_id')
+    .join('offices', 'users.office_id', 'offices.office_id')
+    .where('users.user_id', userId)
+    .select(
+      'users.user_id',
+      'users.username',
+      'users.fullname',
+      'users.email_address',
+      'users.password',
+      'users.badge_id',
+      'users.contact_no',
+      'users.status',
+      'users.office_id',
+      'offices.office_name',
+      'offices.jurisdiction_type',
+      'offices.jurisdiction_ref_id',
+      'users.role_id',
+      'roles.role_name',
+      'roles.permissions',
+      'roles.user_management_scope',
+    )
+    .first();
+}
+
 // Update last_login_time on successful login
 export async function updateLastLogin(userId) {
     return db('users')
