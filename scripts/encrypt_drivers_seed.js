@@ -4,8 +4,8 @@
 // so that 10_assignments.js driver_id foreign keys remain valid.
 
 import crypto from 'crypto';
-import fs     from 'fs';
-import path   from 'path';
+import fs from 'fs';
+import path from 'path';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 
@@ -14,7 +14,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // ── Encryption ────────────────────────────────────────────────────────────────
 const ALGORITHM = 'aes-256-gcm';
-const IV_LENGTH  = 12;
+const IV_LENGTH = 12;
 const TAG_LENGTH = 16;
 
 function getKey() {
@@ -28,11 +28,11 @@ function getKey() {
 
 function encrypt(plaintext) {
   if (plaintext === null || plaintext === undefined) return null;
-  const key       = getKey();
-  const iv        = crypto.randomBytes(IV_LENGTH);
-  const cipher    = crypto.createCipheriv(ALGORITHM, key, iv, { authTagLength: TAG_LENGTH });
+  const key = getKey();
+  const iv = crypto.randomBytes(IV_LENGTH);
+  const cipher = crypto.createCipheriv(ALGORITHM, key, iv, { authTagLength: TAG_LENGTH });
   const encrypted = Buffer.concat([cipher.update(String(plaintext), 'utf8'), cipher.final()]);
-  const authTag   = cipher.getAuthTag();
+  const authTag = cipher.getAuthTag();
   return [iv.toString('base64'), authTag.toString('base64'), encrypted.toString('base64')].join(':');
 }
 
@@ -242,7 +242,7 @@ const DRIVER_UUIDS = [
   '16ba787c-e79a-5692-a645-2c7663983ffc',
 ];
 
-// ── Data helpers ──────────────────────────────────────────────────────────────
+// ── Data helpers ──
 const SINHALA_FIRST = ['Nimal','Kamal','Saman','Sunil','Rohan','Priya','Anura','Chamara',
   'Thilak','Ruwan','Lasith','Dinesh','Mahesh','Nuwan','Isuru','Dilan','Harsha','Tharaka',
   'Buddhika','Chanaka','Malinda','Kasun','Dhanushka','Ravindra','Sanjeewa','Indika',
@@ -296,27 +296,27 @@ function syntheticLicense(idx) {
   return `${letters[idx % letters.length]}${String(1000000 + idx).padStart(7, '0')}`;
 }
 
-// ── Generate drivers ──────────────────────────────────────────────────────────
+// ── Generate drivers ───
 console.log('\nEncrypting driver PII fields...\n');
 
 const drivers = [];
 for (let i = 1; i <= 200; i++) {
-  const distName  = DISTRICT_NAMES[(i - 1) % DISTRICT_NAMES.length];
-  const dobYear   = 1970 + (i % 28);
-  const dobMonth  = String(1 + (i % 12)).padStart(2, '0');
-  const dobDay    = String(1 + (i % 28)).padStart(2, '0');
-  const expYear   = 2025 + (i % 6);
-  const expMonth  = String(1 + (i % 12)).padStart(2, '0');
-  const gender    = (i % 5 === 0) ? 'FEMALE' : 'MALE';
-  const houseNo   = randInt(1, 200);
+  const distName = DISTRICT_NAMES[(i - 1) % DISTRICT_NAMES.length];
+  const dobYear = 1970 + (i % 28);
+  const dobMonth = String(1 + (i % 12)).padStart(2, '0');
+  const dobDay = String(1 + (i % 28)).padStart(2, '0');
+  const expYear = 2025 + (i % 6);
+  const expMonth = String(1 + (i % 12)).padStart(2, '0');
+  const gender = (i % 5 === 0) ? 'FEMALE' : 'MALE';
+  const houseNo = randInt(1, 200);
 
-  const plainNIC     = syntheticNIC(i);
-  const plainPhone   = phone(i);
+  const plainNIC = syntheticNIC(i);
+  const plainPhone = phone(i);
   const plainAddress = `No.${houseNo}, Main Street, ${distName}`;
   const plainLicense = syntheticLicense(i);
 
   drivers.push({
-    driver_id:           DRIVER_UUIDS[i - 1],  // ← exact UUID from original seed
+    driver_id:           DRIVER_UUIDS[i - 1],
     driver_fullname:     fullName(i),
     driver_identity_no:  encrypt(plainNIC),
     driver_id_type:      'NIC',
@@ -332,12 +332,12 @@ for (let i = 1; i <= 200; i++) {
 
 console.log('Sample (first 3):');
 drivers.slice(0, 3).forEach((d, idx) => {
-  console.log(`  [${idx+1}] UUID: ${d.driver_id}`);
-  console.log(`       License ciphertext: ${d.driver_license_no.slice(0, 45)}...`);
+  console.log(`[${idx+1}] UUID: ${d.driver_id}`);
+  console.log(`License ciphertext: ${d.driver_license_no.slice(0, 45)}...`);
 });
-console.log(`\n  Total: ${drivers.length} drivers\n`);
+console.log(`\nTotal: ${drivers.length} drivers\n`);
 
-// ── Write seed file ───────────────────────────────────────────────────────────
+// ── Write seed file ───
 function toJsValue(v) {
   if (v === null || v === undefined) return 'null';
   if (typeof v === 'boolean')        return v ? 'true' : 'false';
