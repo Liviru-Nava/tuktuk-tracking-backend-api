@@ -1,12 +1,13 @@
-import express   from 'express';
-import helmet    from 'helmet';
-import cors      from 'cors';
+import express from 'express';
+import helmet from 'helmet';
+import cors from 'cors';
 import rateLimit from 'express-rate-limit';
 import cookieParser from 'cookie-parser';
 import authRoutes from '../routes/authRoutes.js';
 import provinceRoutes from '../routes/provinceRoutes.js';
 import districtRoutes from '../routes/districtRoutes.js';
 import roleRoutes from '../routes/roleRoutes.js';
+import officeRoutes from '../routes/officeRoutes.js';
 
 const app = express();
 app.use(helmet());
@@ -39,6 +40,7 @@ app.use('/api/v1/auth', authLimiter, authRoutes);
 app.use('/api/v1/provinces', provinceRoutes);
 app.use('/api/v1/districts', districtRoutes);
 app.use('/api/v1/roles', roleRoutes);
+app.use('/api/v1/offices', officeRoutes);
 
 //handle 404 not found cases
 app.use((req, res) => {
