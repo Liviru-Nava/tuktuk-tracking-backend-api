@@ -6,6 +6,7 @@ import cookieParser from 'cookie-parser';
 import authRoutes from '../routes/authRoutes.js';
 import provinceRoutes from '../routes/provinceRoutes.js';
 import districtRoutes from '../routes/districtRoutes.js';
+import roleRoutes from '../routes/roleRoutes.js';
 
 const app = express();
 app.use(helmet());
@@ -37,6 +38,7 @@ app.use(cookieParser());
 app.use('/api/v1/auth', authLimiter, authRoutes);
 app.use('/api/v1/provinces', provinceRoutes);
 app.use('/api/v1/districts', districtRoutes);
+app.use('/api/v1/roles', roleRoutes);
 
 //handle 404 not found cases
 app.use((req, res) => {
