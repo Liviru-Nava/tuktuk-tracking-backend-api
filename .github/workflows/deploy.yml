@@ -10,60 +10,66 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
       - name: Deploy to EC2 via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
-          envs: DB_NAME,DB_USER,DB_PASSWORD,DB_HOST,DB_PORT,PORT,NODE_ENV,JWT_SECRET,REFRESH_TOKEN_SECRET,JWT_EXPIRES_IN,REFRESH_TOKEN_EXPIRES_IN,ENCRYPTION_KEY,RATE_LIMIT_WINDOW_MS,RATE_LIMIT_MAX,PASSWORD_HASH
           script: |
             # Clone if first time, otherwise pull
             if [ ! -d "/home/ubuntu/tuktuk-api" ]; then
-              git clone https://github.com/Liviru-Nava/tuktuk-tracking-backend-api.git /home/ubuntu/tuktuk-api
+              git clone git@github.com:Liviru-Nava/tuktuk-tracking-backend-api.git /home/ubuntu/tuktuk-api
             fi
 
             cd /home/ubuntu/tuktuk-api
             git pull origin main
-            npm install --production
+            npm install
 
-            # Write .env file using environment variables passed from GitHub secrets
-            cat > .env << ENVEOF
-            DB_NAME=${DB_NAME}
-            DB_USER=${DB_USER}
-            DB_PASSWORD=${DB_PASSWORD}
-            DB_HOST=${DB_HOST}
-            DB_PORT=${DB_PORT}
-            PORT=${PORT}
-            NODE_ENV=${NODE_ENV}
-            JWT_SECRET=${JWT_SECRET}
-            REFRESH_TOKEN_SECRET=${REFRESH_TOKEN_SECRET}
-            JWT_EXPIRES_IN=${JWT_EXPIRES_IN}
-            REFRESH_TOKEN_EXPIRES_IN=${REFRESH_TOKEN_EXPIRES_IN}
-            ENCRYPTION_KEY=${ENCRYPTION_KEY}
-            RATE_LIMIT_WINDOW_MS=${RATE_LIMIT_WINDOW_MS}
-            RATE_LIMIT_MAX=${RATE_LIMIT_MAX}
-            PASSWORD_HASH=${PASSWORD_HASH}
+            # Write environment file
+            cat > .env << 'ENVEOF'
+            DB_HOST=${{ secrets.DB_HOST }}
+            DB_USER=${{ secrets.DB_USER }}
+            DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+            DB_NAME=${{ secrets.DB_NAME }}
+            DB_PORT=${{ secrets.DB_PORT }}
+            PORT=${{ secrets.PORT }}
+            NODE_ENV=production
+            JWT_SECRET=${{ secrets.JWT_SECRET }}
+            REFRESH_TOKEN_SECRET=${{ secrets.REFRESH_TOKEN_SECRET }}
+            JWT_EXPIRES_IN=${{ secrets.JWT_EXPIRES_IN }}
+            REFRESH_TOKEN_EXPIRES_IN=${{ secrets.REFRESH_TOKEN_EXPIRES_IN }}
+            ENCRYPTION_KEY=${{ secrets.ENCRYPTION_KEY }}
+            RATE_LIMIT_WINDOW_MS=${{ secrets.RATE_LIMIT_WINDOW_MS }}
+            RATE_LIMIT_MAX=${{ secrets.RATE_LIMIT_MAX }}
+            PASSWORD_HASH=${{ secrets.PASSWORD_HASH }}
             ENVEOF
 
             # Run migrations
-            npx knex migrate:latest --knexfile knexfile.js
+            NODE_ENV=production npx knex migrate:latest --knexfile knexfile.js
 
-            # Run seed scripts only if database is empty
-            OWNER_COUNT=$(psql "${DB_HOST}" -U "${DB_USER}" -d "${DB_NAME}" -t -c "SELECT COUNT(*) FROM owners;" 2>/dev/null || echo "0")
-            if [ "$OWNER_COUNT" -eq "0" ]; then
+            # Run seeds only if provinces table is empty
+            PROVINCE_COUNT=$(NODE_ENV=production npx knex --knexfile knexfile.js seed:run 2>&1 || true)
+            EXISTING=$(PGPASSWORD=${{ secrets.DB_PASSWORD }} psql \
+              -h ${{ secrets.DB_HOST }} \
+              -U ${{ secrets.DB_USER }} \
+              -d ${{ secrets.DB_NAME }} \
+              -t -c "SELECT COUNT(*) FROM provinces;" 2>/dev/null | tr -d ' ')
+
+            if [ "$EXISTING" = "0" ] || [ -z "$EXISTING" ]; then
+              echo "Database is empty. Running seeds..."
               node scripts/encrypt_users_seed.js
               node scripts/encrypt_owners_seed.js
               node scripts/encrypt_drivers_seed.js
-              npx knex seed:run --knexfile knexfile.js
+              NODE_ENV=production npx knex seed:run --knexfile knexfile.js
+              echo "Seeds completed."
+            else
+              echo "Database already has data. Skipping seeds."
             fi
 
-            # Restart or start PM2
+            # Start or restart PM2
             if pm2 describe tuktuk-api > /dev/null 2>&1; then
-              pm2 restart tuktuk-api --update-env
+              pm2 restart tuktuk-api
             else
               pm2 start src/server.js --name tuktuk-api
             fi
