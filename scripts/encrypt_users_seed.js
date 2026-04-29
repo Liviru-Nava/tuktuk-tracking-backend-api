@@ -251,7 +251,7 @@ function buildRow(user, rawUser) {
       username:      ${toJsValue(user.username)},
       fullname:      ${toJsValue(user.fullname)},
       email_address: ${toJsValue(user.email_address)},
-      password:      process.env.PASSWORD_HASH,
+      password:      ${toJsValue(PASSWORD_HASH)},
       badge_id:      ${toJsValue(user.badge_id)},
       contact_no:    ${toJsValue(user.contact_no)},
       office_id:     ${toJsValue(user.office_id)},
