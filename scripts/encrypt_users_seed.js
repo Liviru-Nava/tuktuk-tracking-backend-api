@@ -13,6 +13,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const PASSWORD_HASH = '$2b$10$9bxJzBFzVPA1nWDpgASv8e/8xj6dj6iiTxpIBvYnUQ9wprVJF8dxm';
 
 //encryption paramters
 const ALGORITHM  = 'aes-256-gcm';
@@ -53,7 +54,7 @@ const rawUsers = [
     username:      'hq.superadmin',
     fullname:      'Rohana Wickramasinghe',
     email_address: 'rohana.w@police.gov.lk',
-    password:      process.env.PASSWORD_HASH,
+    password:      PASSWORD_HASH,
     badge_id:      'SLP-HQ-0001',
     contact_no:    '+94771000001',          // ← will be encrypted
     office_id:     '44444444-0001-0001-0001-000000000001',
@@ -67,7 +68,7 @@ const rawUsers = [
     username:      'hq.officer',
     fullname:      'Kumara Perera',
     email_address: 'kumara.p@police.gov.lk',
-    password:      process.env.PASSWORD_HASH,
+    password:      PASSWORD_HASH,
     badge_id:      'SLP-HQ-0002',
     contact_no:    '+94771000002',
     office_id:     '44444444-0001-0001-0001-000000000001',
@@ -81,7 +82,7 @@ const rawUsers = [
     username:      'wp.head',
     fullname:      'Nimal Jayasuriya',
     email_address: 'nimal.j@police.gov.lk',
-    password:      process.env.PASSWORD_HASH,
+    password:      PASSWORD_HASH,
     badge_id:      'SLP-WP-0001',
     contact_no:    '+94771000003',
     office_id:     '44444444-0002-0002-0002-000000000002',
@@ -95,7 +96,7 @@ const rawUsers = [
     username:      'wp.officer',
     fullname:      'Saman Bandara',
     email_address: 'saman.b@police.gov.lk',
-    password:      process.env.PASSWORD_HASH,
+    password:      PASSWORD_HASH,
     badge_id:      'SLP-WP-0002',
     contact_no:    '+94771000004',
     office_id:     '44444444-0002-0002-0002-000000000002',
@@ -109,7 +110,7 @@ const rawUsers = [
     username:      'cp.head',
     fullname:      'Gamini Rathnayake',
     email_address: 'gamini.r@police.gov.lk',
-    password:      process.env.PASSWORD_HASH,
+    password:      PASSWORD_HASH,
     badge_id:      'SLP-CP-0001',
     contact_no:    '+94771000005',
     office_id:     '44444444-0003-0003-0003-000000000003',
@@ -123,7 +124,7 @@ const rawUsers = [
     username:      'sp.officer',
     fullname:      'Pradeep Fernando',
     email_address: 'pradeep.f@police.gov.lk',
-    password:      process.env.PASSWORD_HASH,
+    password:      PASSWORD_HASH,
     badge_id:      'SLP-SP-0001',
     contact_no:    '+94771000006',
     office_id:     '44444444-0004-0004-0004-000000000004',
@@ -137,7 +138,7 @@ const rawUsers = [
     username:      'col.fort.head',
     fullname:      'Asanka Silva',
     email_address: 'asanka.s@police.gov.lk',
-    password:      process.env.PASSWORD_HASH,
+    password:      PASSWORD_HASH,
     badge_id:      'SLP-COL-0001',
     contact_no:    '+94771000007',
     office_id:     '44444444-0011-0011-0011-000000000011',
@@ -151,7 +152,7 @@ const rawUsers = [
     username:      'col.fort.officer',
     fullname:      'Buddhika Rajapaksa',
     email_address: 'buddhika.r@police.gov.lk',
-    password:      process.env.PASSWORD_HASH,
+    password:      PASSWORD_HASH,
     badge_id:      'SLP-COL-0002',
     contact_no:    '+94771000008',
     office_id:     '44444444-0011-0011-0011-000000000011',
@@ -165,7 +166,7 @@ const rawUsers = [
     username:      'negombo.head',
     fullname:      'Lasitha Mendis',
     email_address: 'lasitha.m@police.gov.lk',
-    password:      process.env.PASSWORD_HASH,
+    password:      PASSWORD_HASH,
     badge_id:      'SLP-NEG-0001',
     contact_no:    '+94771000009',
     office_id:     '44444444-0013-0013-0013-000000000013',
@@ -179,7 +180,7 @@ const rawUsers = [
     username:      'kandy.officer',
     fullname:      'Chaminda Dissanayake',
     email_address: 'chaminda.d@police.gov.lk',
-    password:      process.env.PASSWORD_HASH,
+    password:      PASSWORD_HASH,
     badge_id:      'SLP-KAN-0001',
     contact_no:    '+94771000010',
     office_id:     '44444444-0016-0016-0016-000000000016',
@@ -193,7 +194,7 @@ const rawUsers = [
     username:      'jaffna.head',
     fullname:      'Arjun Krishnaswamy',
     email_address: 'arjun.k@police.gov.lk',
-    password:      process.env.PASSWORD_HASH,
+    password:      PASSWORD_HASH,
     badge_id:      'SLP-JAF-0001',
     contact_no:    '+94771000011',
     office_id:     '44444444-0022-0022-0022-000000000022',
@@ -207,7 +208,7 @@ const rawUsers = [
     username:      'galle.officer',
     fullname:      'Tharaka Weerasinghe',
     email_address: 'tharaka.w@police.gov.lk',
-    password:      process.env.PASSWORD_HASH,
+    password:      PASSWORD_HASH,
     badge_id:      'SLP-GAL-0001',
     contact_no:    '+94771000012',
     office_id:     '44444444-0019-0019-0019-000000000019',
@@ -265,7 +266,7 @@ const output = `// db/seeds/05_users_seed.js
 // 12 seeded police users covering all role types and jurisdiction levels.
 //
 // Password for ALL users: Liviru@123
-// Hash: ${process.env.PASSWORD_HASH}
+// Hash: ${PASSWORD_HASH}
 //
 // PDPA Compliance:
 //   contact_no is encrypted at rest using AES-256-GCM.
@@ -278,7 +279,7 @@ const output = `// db/seeds/05_users_seed.js
 
 export async function seed(knex) {
 
-  const PASSWORD_HASH = '${process.env.PASSWORD_HASH}';
+  const PASSWORD_HASH = '${PASSWORD_HASH}';
 
   await knex('users').insert([
 
