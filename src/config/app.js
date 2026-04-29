@@ -58,6 +58,7 @@ app.use((err, req, res, next) => {
     res.status(500).json({ success: false, message: 'Internal server error' });
 });
 
+//health check api
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'ok', message: 'TukTuk Tracking API is running' });
 });
