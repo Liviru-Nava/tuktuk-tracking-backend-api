@@ -3,7 +3,6 @@
 // permissions is stored as a PostgreSQL TEXT[] array.
 
 export async function seed(knex) {
-  await knex('roles').del();
 
   const allPermissions = [
     'vehicle:create', 'vehicle:view', 'vehicle:edit', 'vehicle:delete', 'vehicle:change_status',
@@ -124,5 +123,5 @@ export async function seed(knex) {
       user_management_scope: 'NONE',
       permissions: officerPermissions,
     },
-  ]);
+  ]).onConflict('role_id').ignore();
 }

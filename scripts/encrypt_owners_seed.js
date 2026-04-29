@@ -345,14 +345,13 @@ const output = `// db/seeds/06_owners_seed.js
 // Regenerate: node scripts/encrypt_owners_seed.js
 
 export async function seed(knex) {
-  await knex('owners').del();
 
   const rows = [
 ${rows}
   ];
 
   for (let i = 0; i < rows.length; i += 50) {
-    await knex('owners').insert(rows.slice(i, i + 50));
+    await knex('owners').insert(rows.slice(i, i + 50)).onConflict('owner_id').ignore();
   }
 
   console.log(\`Owners seeded: \${rows.length} records\`);

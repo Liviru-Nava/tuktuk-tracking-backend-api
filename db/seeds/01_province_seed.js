@@ -2,8 +2,6 @@
 // province_code follows the official Sri Lanka administrative codes.
 
 export async function seed(knex) {
-  await knex('provinces').del();
-
   await knex('provinces').insert([
     {
       province_id: '11111111-0001-0001-0001-000000000001',
@@ -50,5 +48,5 @@ export async function seed(knex) {
       province_name: 'Sabaragamuwa Province',
       province_code: 'SGP',
     },
-  ]);
+  ]).onConflict('province_id').ignore();
 }

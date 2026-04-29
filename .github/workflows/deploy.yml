@@ -45,11 +45,10 @@ jobs:
             PASSWORD_HASH=${{ secrets.PASSWORD_HASH }}
             ENVEOF
 
-            # Run migrations
+            # Run migrations — safe to run every deployment, knex tracks what has been run
             NODE_ENV=production npx knex migrate:latest --knexfile knexfile.js
 
-            # Run seeds only if provinces table is empty
-            PROVINCE_COUNT=$(NODE_ENV=production npx knex --knexfile knexfile.js seed:run 2>&1 || true)
+            # Check if database already has seed data by counting provinces
             EXISTING=$(PGPASSWORD=${{ secrets.DB_PASSWORD }} psql \
               -h ${{ secrets.DB_HOST }} \
               -U ${{ secrets.DB_USER }} \
@@ -57,17 +56,26 @@ jobs:
               -t -c "SELECT COUNT(*) FROM provinces;" 2>/dev/null | tr -d ' ')
 
             if [ "$EXISTING" = "0" ] || [ -z "$EXISTING" ]; then
-              echo "Database is empty. Running seeds..."
+              echo "Database is empty. Running seed pipeline..."
+
+              # Step 1 — Generate encrypted seed files from plain data
+              # These scripts read .env for ENCRYPTION_KEY and write to db/seeds/
+              echo "Generating encrypted seed files..."
               node scripts/encrypt_users_seed.js
               node scripts/encrypt_owners_seed.js
               node scripts/encrypt_drivers_seed.js
+
+              # Step 2 — Run all seed files in numeric order
+              # Knex picks up the generated files automatically
+              echo "Inserting all seed data..."
               NODE_ENV=production npx knex seed:run --knexfile knexfile.js
-              echo "Seeds completed."
+
+              echo "Seed pipeline completed successfully."
             else
-              echo "Database already has data. Skipping seeds."
+              echo "Database already has $EXISTING province records. Skipping seed pipeline."
             fi
 
-            # Start or restart PM2
+            # Start or restart the API with PM2
             if pm2 describe tuktuk-api > /dev/null 2>&1; then
               pm2 restart tuktuk-api
             else

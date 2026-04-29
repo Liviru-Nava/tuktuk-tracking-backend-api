@@ -12,8 +12,6 @@
 // Regenerate: node scripts/encrypt_drivers_seed.js
 
 export async function seed(knex) {
-  await knex('drivers').del();
-
   const rows = [
     {
       driver_id: '300d1eae-9d46-5061-b70a-46ca3563b770',
@@ -2618,7 +2616,7 @@ export async function seed(knex) {
   ];
 
   for (let i = 0; i < rows.length; i += 50) {
-    await knex('drivers').insert(rows.slice(i, i + 50));
+    await knex('drivers').insert(rows.slice(i, i + 50)).onConflict('driver_id').ignore();
   }
 
   console.log(`Drivers seeded: ${rows.length} records`);
