@@ -4,7 +4,7 @@ import bcrypt from 'bcryptjs';
 import { v4 as uuidv4 } from 'uuid';
 import db from '../config/knex.js';
 import * as userRepository from '../repositories/userRepository.js';
-import { getPaginationParams, buildCollection } from '../utils/pagination.utils.js';
+import { getPaginationParams, buildCollection } from '../utils/paginationUtils.js';
 import { encrypt, decrypt } from '../utils/encryption.js';
 
 async function getProvinceIdFromDistrictId(districtId) {
