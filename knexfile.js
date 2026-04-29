@@ -1,6 +1,8 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
+const isProduction = process.env.NODE_ENV === 'production';
+
 export default {
   development: {
     client: 'pg',
@@ -10,6 +12,7 @@ export default {
       database: process.env.DB_NAME,
       user:     process.env.DB_USER,
       password: process.env.DB_PASSWORD,
+      ssl: isProduction ? { rejectUnauthorized: false } : false,
     },
     pool: { min: 2, max: 10 },
     migrations: {
@@ -25,7 +28,11 @@ export default {
   production: {
     client: 'pg',
     connection: {
-      connectionString: process.env.DATABASE_URL,
+      host:     process.env.DB_HOST,
+      port:     parseInt(process.env.DB_PORT) || 5432,
+      database: process.env.DB_NAME,
+      user:     process.env.DB_USER,
+      password: process.env.DB_PASSWORD,
       ssl: { rejectUnauthorized: false },
     },
     pool: { min: 2, max: 10 },
@@ -36,7 +43,6 @@ export default {
     },
     seeds: {
       directory: './db/seeds',
-      sortDirsSeparately: true,
     },
   },
 };

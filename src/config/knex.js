@@ -3,6 +3,8 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
+const isProduction = process.env.NODE_ENV === 'production';
+
 const db = knex({
   client: 'pg',
   connection: {
@@ -11,6 +13,7 @@ const db = knex({
     database: process.env.DB_NAME,
     user:     process.env.DB_USER,
     password: process.env.DB_PASSWORD,
+    ssl: isProduction ? { rejectUnauthorized: false } : false,
   },
   pool: {
     min: 2,
@@ -18,7 +21,7 @@ const db = knex({
   },
   migrations: {
     directory: './db/migrations',
-    tableName: 'knex_migrations', //migrations will be tracked here
+    tableName: 'knex_migrations',
     extension: 'js',
   },
   seeds: {

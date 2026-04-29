@@ -19,59 +19,55 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
+          envs: DB_NAME,DB_USER,DB_PASSWORD,DB_HOST,DB_PORT,PORT,NODE_ENV,JWT_SECRET,REFRESH_TOKEN_SECRET,JWT_EXPIRES_IN,REFRESH_TOKEN_EXPIRES_IN,ENCRYPTION_KEY,RATE_LIMIT_WINDOW_MS,RATE_LIMIT_MAX,PASSWORD_HASH
           script: |
-            # Navigate to app directory or clone if first time
+            # Clone if first time, otherwise pull
             if [ ! -d "/home/ubuntu/tuktuk-api" ]; then
               git clone https://github.com/Liviru-Nava/tuktuk-tracking-backend-api.git /home/ubuntu/tuktuk-api
             fi
 
             cd /home/ubuntu/tuktuk-api
-
-            # Pull latest code
             git pull origin main
-
-            # Install dependencies
             npm install --production
 
-            # Write environment file from GitHub secrets
-            cat > .env << 'ENVEOF'
-            DB_NAME=${{ secrets.DB_NAME }}
-            DB_USER=${{ secrets.DB_USER }}
-            DB_PASSWORD=${{ secrets.DB_PASSWORD }}
-            DB_HOST=${{ secrets.DB_HOST }}
-            DB_PORT=${{ secrets.DB_PORT }}
-            PORT=${{ secrets.PORT }}
-            NODE_ENV=${{ secrets.NODE_ENV }}
-            JWT_SECRET=${{ secrets.JWT_SECRET }}
-            REFRESH_TOKEN_SECRET=${{ secrets.REFRESH_TOKEN_SECRET }}
-            JWT_EXPIRES_IN=${{ secrets.JWT_EXPIRES_IN }}
-            REFRESH_TOKEN_EXPIRES_IN=${{ secrets.REFRESH_TOKEN_EXPIRES_IN }}
-            ENCRYPTION_KEY=${{ secrets.ENCRYPTION_KEY }}
-            RATE_LIMIT_WINDOW_MS=${{ secrets.RATE_LIMIT_WINDOW_MS }}
-            RATE_LIMIT_MAX=${{ secrets.RATE_LIMIT_MAX }}
-            PASSWORD_HASH=${{ secrets.PASSWORD_HASH }}
+            # Write .env file using environment variables passed from GitHub secrets
+            cat > .env << ENVEOF
+            DB_NAME=${DB_NAME}
+            DB_USER=${DB_USER}
+            DB_PASSWORD=${DB_PASSWORD}
+            DB_HOST=${DB_HOST}
+            DB_PORT=${DB_PORT}
+            PORT=${PORT}
+            NODE_ENV=${NODE_ENV}
+            JWT_SECRET=${JWT_SECRET}
+            REFRESH_TOKEN_SECRET=${REFRESH_TOKEN_SECRET}
+            JWT_EXPIRES_IN=${JWT_EXPIRES_IN}
+            REFRESH_TOKEN_EXPIRES_IN=${REFRESH_TOKEN_EXPIRES_IN}
+            ENCRYPTION_KEY=${ENCRYPTION_KEY}
+            RATE_LIMIT_WINDOW_MS=${RATE_LIMIT_WINDOW_MS}
+            RATE_LIMIT_MAX=${RATE_LIMIT_MAX}
+            PASSWORD_HASH=${PASSWORD_HASH}
             ENVEOF
 
-            # Run any new migrations
+            # Run migrations
             npx knex migrate:latest --knexfile knexfile.js
 
-            # Run encryption files
-            node scripts/encrypt_users_seed.js
-            node scripts/encrypt_owners_seed.js
-            node scripts/encrypt_drivers_seed.js
+            # Run seed scripts only if database is empty
+            OWNER_COUNT=$(psql "${DB_HOST}" -U "${DB_USER}" -d "${DB_NAME}" -t -c "SELECT COUNT(*) FROM owners;" 2>/dev/null || echo "0")
+            if [ "$OWNER_COUNT" -eq "0" ]; then
+              node scripts/encrypt_users_seed.js
+              node scripts/encrypt_owners_seed.js
+              node scripts/encrypt_drivers_seed.js
+              npx knex seed:run --knexfile knexfile.js
+            fi
 
-            # Run seed files
-            npx knex seed:run --knexfile knexfile.js
-
-            # Restart or start the app with PM2
-            pm2 describe tuktuk-api > /dev/null 2>&1
-            if [ $? -eq 0 ]; then
-              pm2 restart tuktuk-api
+            # Restart or start PM2
+            if pm2 describe tuktuk-api > /dev/null 2>&1; then
+              pm2 restart tuktuk-api --update-env
             else
               pm2 start src/server.js --name tuktuk-api
             fi
 
-            # Save PM2 process list so it survives server reboots
             pm2 save
 
       - name: Verify deployment
