@@ -28,11 +28,11 @@ function getKey() {
 
 function encrypt(plaintext) {
   if (plaintext === null || plaintext === undefined) return null;
-  const key       = getKey();
-  const iv        = crypto.randomBytes(IV_LENGTH);
-  const cipher    = crypto.createCipheriv(ALGORITHM, key, iv, { authTagLength: TAG_LENGTH });
+  const key = getKey();
+  const iv = crypto.randomBytes(IV_LENGTH);
+  const cipher = crypto.createCipheriv(ALGORITHM, key, iv, { authTagLength: TAG_LENGTH });
   const encrypted = Buffer.concat([cipher.update(String(plaintext), 'utf8'), cipher.final()]);
-  const authTag   = cipher.getAuthTag();
+  const authTag = cipher.getAuthTag();
   return [iv.toString('base64'), authTag.toString('base64'), encrypted.toString('base64')].join(':');
 }
 
@@ -240,7 +240,7 @@ const OWNER_UUIDS = [
   '9baad457-83b7-58f6-9a9e-fef370ce4da2',
 ];
 
-// ── Data helpers (same seed as original generate_seeds.py) ───────────────────
+// ── Data helpers ────
 const SINHALA_FIRST = ['Nimal','Kamal','Saman','Sunil','Rohan','Priya','Anura','Chamara',
   'Thilak','Ruwan','Lasith','Dinesh','Mahesh','Nuwan','Isuru','Dilan','Harsha','Tharaka',
   'Buddhika','Chanaka','Malinda','Kasun','Dhanushka','Ravindra','Sanjeewa','Indika',
@@ -288,20 +288,20 @@ function phone(idx) {
   return `+94${prefixes[idx % prefixes.length]}${String(randInt(1000000, 9999999))}`;
 }
 
-// ── Generate owners ───────────────────────────────────────────────────────────
+// ── Generate owners ───
 console.log('\n  Encrypting owner PII fields...\n');
 
 const owners = [];
 for (let i = 1; i <= 200; i++) {
   const districtName = DISTRICT_NAMES[(i - 1) % DISTRICT_NAMES.length];
-  const gender       = (i % 4 === 0) ? 'FEMALE' : 'MALE';
-  const houseNo      = randInt(1, 250);
-  const plainNIC     = syntheticNIC(i);
-  const plainPhone   = phone(i);
+  const gender = (i % 4 === 0) ? 'FEMALE' : 'MALE';
+  const houseNo = randInt(1, 250);
+  const plainNIC = syntheticNIC(i);
+  const plainPhone = phone(i);
   const plainAddress = `No.${houseNo}, ${districtName} Road, ${districtName}`;
 
   owners.push({
-    owner_id:          OWNER_UUIDS[i - 1],   // ← exact UUID from original seed
+    owner_id:          OWNER_UUIDS[i - 1],
     owner_fullname:    fullName(i),
     owner_identity_no: encrypt(plainNIC),
     owner_id_type:     'NIC',
@@ -312,14 +312,14 @@ for (let i = 1; i <= 200; i++) {
   });
 }
 
-console.log('  Sample (first 3):');
+console.log('Sample (first 3):');
 owners.slice(0, 3).forEach((o, idx) => {
-  console.log(`  [${idx+1}] UUID: ${o.owner_id}`);
-  console.log(`       NIC ciphertext: ${o.owner_identity_no.slice(0, 45)}...`);
+  console.log(`[${idx+1}] UUID: ${o.owner_id}`);
+  console.log(`NIC ciphertext: ${o.owner_identity_no.slice(0, 45)}...`);
 });
 console.log(`\n  Total: ${owners.length} owners\n`);
 
-// ── Write seed file ───────────────────────────────────────────────────────────
+// ── Write seed file ───
 function toJsValue(v) {
   if (v === null || v === undefined) return 'null';
   if (typeof v === 'boolean')        return v ? 'true' : 'false';
@@ -328,8 +328,8 @@ function toJsValue(v) {
 }
 
 const rows = owners.map(o => {
-  const pairs = Object.entries(o).map(([k, v]) => `      ${k}: ${toJsValue(v)}`).join(',\n');
-  return `    {\n${pairs},\n    }`;
+  const pairs = Object.entries(o).map(([k, v]) => `${k}: ${toJsValue(v)}`).join(',\n');
+  return `{\n${pairs},\n}`;
 }).join(',\n');
 
 const output = `// db/seeds/06_owners_seed.js
