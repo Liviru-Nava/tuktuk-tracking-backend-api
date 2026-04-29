@@ -9,6 +9,7 @@ import districtRoutes from '../routes/districtRoutes.js';
 import roleRoutes from '../routes/roleRoutes.js';
 import officeRoutes from '../routes/officeRoutes.js';
 import userRoutes from '../routes/userRoutes.js';
+import ownerRoutes from '../routes/ownerRoutes.js';
 
 
 const app = express();
@@ -44,6 +45,7 @@ app.use('/api/v1/districts', districtRoutes);
 app.use('/api/v1/roles', roleRoutes);
 app.use('/api/v1/offices', officeRoutes);
 app.use('/api/v1/users', userRoutes);
+app.use('/api/v1/owners', ownerRoutes);
 
 //handle 404 not found cases
 app.use((req, res) => {
