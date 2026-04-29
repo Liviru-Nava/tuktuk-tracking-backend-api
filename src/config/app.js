@@ -38,6 +38,11 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
+//health check api
+app.get('/health', (req, res) => {
+  res.status(200).json({ status: 'ok', message: 'TukTuk Tracking API is running' });
+});
+
 //main route definition
 app.use('/api/v1/auth', authLimiter, authRoutes);
 app.use('/api/v1/provinces', provinceRoutes);
@@ -56,11 +61,6 @@ app.use((req, res) => {
 app.use((err, req, res, next) => {
     console.error('[UNHANDLED ERROR]', err);
     res.status(500).json({ success: false, message: 'Internal server error' });
-});
-
-//health check api
-app.get('/health', (req, res) => {
-  res.status(200).json({ status: 'ok', message: 'TukTuk Tracking API is running' });
 });
 
 export default app;

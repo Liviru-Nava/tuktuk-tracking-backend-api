@@ -277,7 +277,6 @@ const output = `// db/seeds/05_users_seed.js
 // To regenerate: node scripts/encrypt_users_seed.js
 
 export async function seed(knex) {
-  await knex('users').del();
 
   const PASSWORD_HASH = '${process.env.PASSWORD_HASH}';
 
@@ -285,7 +284,7 @@ export async function seed(knex) {
 
 ${rows}
 
-  ]);
+  ]).onConflict('user_id').ignore();
 }
 `;
 
