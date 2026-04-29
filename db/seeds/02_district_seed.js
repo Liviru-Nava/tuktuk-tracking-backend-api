@@ -1,7 +1,6 @@
 // All 25 districts of Sri Lanka mapped to their correct provinces.
 
 export async function seed(knex) {
-  await knex('districts').del();
 
   await knex('districts').insert([
     // Western Province (WP)
@@ -46,5 +45,5 @@ export async function seed(knex) {
     // Sabaragamuwa Province (SGP)
     { district_id: '22222222-0024-0024-0024-000000000024', province_id: '11111111-0009-0009-0009-000000000009', district_name: 'Ratnapura', district_code: 'RAT' },
     { district_id: '22222222-0025-0025-0025-000000000025', province_id: '11111111-0009-0009-0009-000000000009', district_name: 'Kegalle', district_code: 'KEG' },
-  ]);
+  ]).onConflict('district_id').ignore();
 }

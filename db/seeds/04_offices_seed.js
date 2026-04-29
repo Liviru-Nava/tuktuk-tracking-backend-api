@@ -7,7 +7,6 @@
 //   district_id   for DISTRICT jurisdiction
 
 export async function seed(knex) {
-  await knex('offices').del();
 
   await knex('offices').insert([
 
@@ -490,5 +489,5 @@ export async function seed(knex) {
       office_contact:       '+94352222345',
       status:               'ACTIVE',
     },
-  ]);
+  ]).onConflict('office_id').ignore();
 }

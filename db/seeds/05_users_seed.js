@@ -12,11 +12,10 @@
 // Encrypted with ENCRYPTION_KEY from .env at seed generation time.
 // DO NOT manually edit the contact_no values — they are ciphertext.
 // To regenerate: node scripts/encrypt_users_seed.js
+import dotenv from 'dotenv';
+dotenv.config();
 
 export async function seed(knex) {
-  await knex('users').del();
-
-  const PASSWORD_HASH = '$2b$10$9bxJzBFzVPA1nWDpgASv8e/8xj6dj6iiTxpIBvYnUQ9wprVJF8dxm';
 
   await knex('users').insert([
 
@@ -188,5 +187,5 @@ export async function seed(knex) {
       status:        'ACTIVE',
     },
 
-  ]);
+  ]).onConflict('user_id').ignore();
 }

@@ -364,14 +364,12 @@ const output = `// db/seeds/09_drivers_seed.js
 // Regenerate: node scripts/encrypt_drivers_seed.js
 
 export async function seed(knex) {
-  await knex('drivers').del();
-
   const rows = [
 ${rows}
   ];
 
   for (let i = 0; i < rows.length; i += 50) {
-    await knex('drivers').insert(rows.slice(i, i + 50));
+    await knex('drivers').insert(rows.slice(i, i + 50)).onConflict('driver_id').ignore();
   }
 
   console.log(\`Drivers seeded: \${rows.length} records\`);
