@@ -10,6 +10,7 @@ import roleRoutes from '../routes/roleRoutes.js';
 import officeRoutes from '../routes/officeRoutes.js';
 import userRoutes from '../routes/userRoutes.js';
 import ownerRoutes from '../routes/ownerRoutes.js';
+import vehicleRoutes from '../routes/vehicleRoutes.js';
 
 
 const app = express();
@@ -51,6 +52,7 @@ app.use('/api/v1/roles', roleRoutes);
 app.use('/api/v1/offices', officeRoutes);
 app.use('/api/v1/users', userRoutes);
 app.use('/api/v1/owners', ownerRoutes);
+app.use('/api/v1/vehicles', vehicleRoutes);
 
 //handle 404 not found cases
 app.use((req, res) => {
