@@ -13,7 +13,7 @@ import ownerRoutes from '../routes/ownerRoutes.js';
 import vehicleRoutes from '../routes/vehicleRoutes.js';
 import driverRoutes from '../routes/driverRoutes.js';
 import trackingDeviceRoutes from '../routes/trackingDeviceRoutes.js';
-
+import locationPingRoutes from '../routes/locationPingRoutes.js';
 
 const app = express();
 app.use(helmet());
@@ -57,6 +57,7 @@ app.use('/api/v1/owners', ownerRoutes);
 app.use('/api/v1/vehicles', vehicleRoutes);
 app.use('/api/v1/drivers', driverRoutes);
 app.use('/api/v1/tracking-devices', trackingDeviceRoutes);
+app.use('/api/v1/location-pings', locationPingRoutes);
 
 //handle 404 not found cases
 app.use((req, res) => {
