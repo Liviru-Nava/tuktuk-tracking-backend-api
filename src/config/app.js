@@ -12,6 +12,7 @@ import userRoutes from '../routes/userRoutes.js';
 import ownerRoutes from '../routes/ownerRoutes.js';
 import vehicleRoutes from '../routes/vehicleRoutes.js';
 import driverRoutes from '../routes/driverRoutes.js';
+import trackingDeviceRoutes from '../routes/trackingDeviceRoutes.js';
 
 
 const app = express();
@@ -55,6 +56,7 @@ app.use('/api/v1/users', userRoutes);
 app.use('/api/v1/owners', ownerRoutes);
 app.use('/api/v1/vehicles', vehicleRoutes);
 app.use('/api/v1/drivers', driverRoutes);
+app.use('/api/v1/tracking-devices', trackingDeviceRoutes);
 
 //handle 404 not found cases
 app.use((req, res) => {
