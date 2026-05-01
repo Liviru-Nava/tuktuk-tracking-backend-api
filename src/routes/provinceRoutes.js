@@ -1,7 +1,7 @@
 //The will be for the routes manegeement for the province endpoints
 
 import { Router } from 'express';
-import * as provinceController from '../controllers/provinceControllers.js';
+import * as provinceController from '../controllers/provinceController.js';
 import { authenticate, requirePermission } from '../middleware/authMiddleware.js';
 
 const router = Router();

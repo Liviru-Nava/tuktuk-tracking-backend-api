@@ -1,7 +1,7 @@
 //Routing managed for routes
 
 import { Router } from 'express';
-import * as roleController  from '../controllers/roleControllers.js';
+import * as roleController  from '../controllers/roleController.js';
 import { authenticate, requirePermission } from '../middleware/authMiddleware.js';
 
 const router = Router();
