@@ -1,7 +1,7 @@
 //This will be used to manage the district routes for the endpoints. 
 
 import { Router } from 'express';
-import * as districtController from '../controllers/districtControllers.js';
+import * as districtController from '../controllers/districtController.js';
 import { authenticate, requirePermission } from '../middleware/authMiddleware.js';
 
 const router = Router();

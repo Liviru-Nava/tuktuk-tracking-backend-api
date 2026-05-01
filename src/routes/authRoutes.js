@@ -1,6 +1,6 @@
 // src/routes/auth.routes.js
 import { Router } from 'express';
-import * as authController from '../controllers/authControllers.js';
+import * as authController from '../controllers/authController.js';
 import { authenticate }    from '../middleware/authMiddleware.js';
 import { validateLogin, validateRefresh } from '../middleware/validateMiddleware.js';
 

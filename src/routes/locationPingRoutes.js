@@ -4,15 +4,15 @@ import { Router } from 'express';
 import * as locationPingController from '../controllers/locationPingController.js';
 import { authenticate, requirePermission } from '../middleware/authMiddleware.js';
 
-const locationPingRouter = Router();
+const locationPingRoutes = Router();
 
-locationPingRouter.use(authenticate);
+locationPingRoutes.use(authenticate);
 
 // POST /api/v1/location-pings
-locationPingRouter.post(
+locationPingRoutes.post(
     '/',
     requirePermission('location:view_history'),
     locationPingController.submitLocationPing,
 );
 
-export default locationPingRouter;
+export default locationPingRoutes;

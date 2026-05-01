@@ -1,7 +1,7 @@
 //All the routes for the office
 
 import { Router } from 'express';
-import * as officeController from '../controllers/officeControllers.js';
+import * as officeController from '../controllers/officeController.js';
 import { authenticate, requirePermission } from '../middleware/authMiddleware.js';
 
 const router = Router();
