@@ -89,13 +89,14 @@ export async function up(knex) {
     CREATE INDEX idx_tracking_devices_status
       ON tracking_devices (device_status);
 
+    -- Device token verification on every location ping
+    CREATE INDEX idx_tracking_devices_token_hash
+      ON tracking_devices (device_token_hash)
+      WHERE device_token_hash IS NOT NULL;
+
     -- Vehicle lookup by license plate
     CREATE INDEX idx_vehicles_license_plate_no
       ON vehicles (license_plate_no);
-
-    -- Vehicle lookup by registration number
-    CREATE INDEX idx_vehicles_vehicle_reg_no
-      ON vehicles (vehicle_reg_no);
 
     -- Driver lookup by identity number (police investigative query)
     CREATE INDEX idx_drivers_identity_no
@@ -166,8 +167,8 @@ export async function down(knex) {
     DROP INDEX IF EXISTS idx_offices_status;
     DROP INDEX IF EXISTS idx_users_status;
     DROP INDEX IF EXISTS idx_tracking_devices_status;
+    DROP INDEX IF EXISTS idx_tracking_devices_token_hash;
     DROP INDEX IF EXISTS idx_vehicles_license_plate_no;
-    DROP INDEX IF EXISTS idx_vehicles_vehicle_reg_no;
     DROP INDEX IF EXISTS idx_drivers_identity_no;
     DROP INDEX IF EXISTS idx_owners_identity_no;
     DROP INDEX IF EXISTS idx_users_username;

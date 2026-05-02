@@ -14,6 +14,7 @@ import vehicleRoutes from '../routes/vehicleRoutes.js';
 import driverRoutes from '../routes/driverRoutes.js';
 import trackingDeviceRoutes from '../routes/trackingDeviceRoutes.js';
 import locationPingRoutes from '../routes/locationPingRoutes.js';
+import assignmentRoutes from '../routes/assignmentRoutes.js';
 
 //Swagger imports
 import swaggerUi from 'swagger-ui-express';
@@ -76,6 +77,7 @@ app.use('/tuktrack/v1/vehicles', vehicleRoutes);
 app.use('/tuktrack/v1/drivers', driverRoutes);
 app.use('/tuktrack/v1/tracking-devices', trackingDeviceRoutes);
 app.use('/tuktrack/v1/location-pings', locationPingRoutes);
+app.use('/tuktrack/v1/assignments', assignmentRoutes);
 
 //swagger definition
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));

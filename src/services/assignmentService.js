@@ -69,7 +69,7 @@ export async function assignDriver(requestBody, requestingUser) {
     if (existingVehicleAssignment) {
         throw {
             statusCode: 409,
-            message: `Vehicle already has an active driver assignment (assignment_id: ${existingVehicleAssignment.assignment_id}). Use POST /api/v1/unassign-driver first.`,
+            message: `Vehicle already has an active driver assignment (assignment_id: ${existingVehicleAssignment.assignment_id}). Use POST /tuktrack/v1/unassign-driver first.`,
         };
     }
 
@@ -199,7 +199,6 @@ export async function assignDevice(requestBody) {
         .returning([
             'vehicle_id',
             'license_plate_no',
-            'vehicle_reg_no',
             'status',
             'device_id',
             'district_id',

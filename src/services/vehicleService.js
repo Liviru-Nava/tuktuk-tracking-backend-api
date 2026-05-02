@@ -69,7 +69,7 @@ export async function getAllVehicles(queryParams, requestingUser) {
     });
 
     return buildCollection(
-        '/api/v1/vehicles',
+        '/tuktrack/v1/vehicles',
         offset,
         limit,
         totalVehicleCount,
@@ -147,7 +147,6 @@ export async function getVehicleFullProfile(vehicleId, requestingUser) {
     return {
         vehicle_id:         vehicleRecord.vehicle_id,
         license_plate_no:   vehicleRecord.license_plate_no,
-        vehicle_reg_no:     vehicleRecord.vehicle_reg_no,
         chassis_number:     vehicleRecord.chassis_number,
         engine_number:      vehicleRecord.engine_number,
         make_of_vehicle:    vehicleRecord.make_of_vehicle,
@@ -171,7 +170,6 @@ export async function createVehicle(requestBody, requestingUser) {
         owner_id,
         district_id,
         license_plate_no,
-        vehicle_reg_no,
         chassis_number,
         engine_number,
         make_of_vehicle,
@@ -184,13 +182,13 @@ export async function createVehicle(requestBody, requestingUser) {
     } = requestBody;
 
     if (
-        !owner_id || !district_id || !license_plate_no || !vehicle_reg_no ||
+        !owner_id || !district_id || !license_plate_no ||
         !chassis_number || !engine_number || !make_of_vehicle ||
         !model_of_vehicle || !manufacture_year || !fuel_type || !vehicle_reg_date
     ) {
         throw {
             statusCode: 400,
-            message: 'owner_id, district_id, license_plate_no, vehicle_reg_no, chassis_number, engine_number, make_of_vehicle, model_of_vehicle, manufacture_year, fuel_type and vehicle_reg_date are all required',
+            message: 'owner_id, district_id, license_plate_no, chassis_number, engine_number, make_of_vehicle, model_of_vehicle, manufacture_year, fuel_type and vehicle_reg_date are all required',
         };
     }
 
@@ -219,11 +217,6 @@ export async function createVehicle(requestBody, requestingUser) {
         throw { statusCode: 409, message: `License plate '${license_plate_no}' is already registered` };
     }
 
-    const existingVehicleWithSameRegNo = await vehicleRepository.findVehicleByRegNo(vehicle_reg_no);
-    if (existingVehicleWithSameRegNo) {
-        throw { statusCode: 409, message: `Registration number '${vehicle_reg_no}' is already registered` };
-    }
-
     const existingVehicleWithSameChassis = await vehicleRepository.findVehicleByChassisNumber(chassis_number);
     if (existingVehicleWithSameChassis) {
         throw { statusCode: 409, message: `Chassis number '${chassis_number}' is already registered` };
@@ -240,7 +233,6 @@ export async function createVehicle(requestBody, requestingUser) {
         district_id,
         device_id:        null, // device is assigned separately via assign-device controller
         license_plate_no: license_plate_no.trim().toUpperCase(),
-        vehicle_reg_no:   vehicle_reg_no.trim().toUpperCase(),
         chassis_number:   chassis_number.trim().toUpperCase(),
         engine_number:    engine_number.trim().toUpperCase(),
         make_of_vehicle:  make_of_vehicle.trim(),
@@ -272,7 +264,7 @@ export async function updateVehicle(vehicleId, requestBody, requestingUser) {
 
     // these fields are immutable — they identify the physical vehicle
     const immutableFieldNames = [
-        'license_plate_no', 'vehicle_reg_no',
+        'license_plate_no',
         'chassis_number', 'engine_number',
         'status', 'device_id',
     ];
@@ -411,7 +403,7 @@ export async function getVehicleDriverHistory(vehicleId, queryParams, requesting
     return {
         vehicle: existingVehicle,
         collection: buildCollection(
-            `/api/v1/vehicles/${vehicleId}/drivers`,
+            `/tuktrack/v1/vehicles/${vehicleId}/drivers`,
             offset,
             limit,
             totalAssignmentCount,
@@ -479,7 +471,7 @@ export async function getVehicleLocationHistory(vehicleId, queryParams, requesti
     );
 
     return buildCollection(
-        `/api/v1/vehicles/${vehicleId}/location-pings`,
+        `/tuktrack/v1/vehicles/${vehicleId}/location-pings`,
         offset,
         limit,
         totalPingCount,

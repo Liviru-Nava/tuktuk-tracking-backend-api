@@ -13,6 +13,11 @@ info:
     Bearer JWT access token in the Authorization header. Tokens expire after 15 minutes.
     Use POST /auth/refresh to obtain a new token.
 
+    **Device Authentication:** The POST /location-pings endpoint does not use JWT.
+    Hardware tracking devices authenticate using the X-Device-Token header. Each device
+    is issued a unique firmware token (format FIRMTUKTUKXXXX) at registration time —
+    this token is shown exactly once and must be recorded at provisioning. The raw token
+    is never stored; only its HMAC-SHA256 hash is persisted.
 
     **Jurisdiction:** Responses are automatically scoped to the requesting user's
     jurisdiction (NATIONAL / PROVINCIAL / DISTRICT / STATION). A station officer will
@@ -68,6 +73,18 @@ components:
       description: >
         JWT access token obtained from POST /auth/login.
         Expires after 15 minutes. Refresh using POST /auth/refresh.
+    
+    DeviceTokenAuth:
+      type: apiKey
+      in: header
+      name: X-Device-Token
+      description: >
+        Firmware token issued to a tracking device at registration time.
+        Format: FIRMTUKTUKXXXX (e.g. FIRMTUKTUK0001).
+        Shown exactly once in the POST /tracking-devices response and must
+        be securely recorded at provisioning. The raw token is never stored —
+        only its HMAC-SHA256 hash is persisted in the database.
+        Used exclusively on POST /location-pings.
 
 # ─────────────────────────────────────────────────────────────
 # REUSABLE SCHEMAS
@@ -361,9 +378,6 @@ components:
         license_plate_no:
           type: string
           example: WP CAB-1234
-        vehicle_reg_no:
-          type: string
-          example: VR-2023-001234
         chassis_number:
           type: string
           example: MA3FJEB1S00123456
@@ -417,8 +431,6 @@ components:
           type: string
           
         license_plate_no:
-          type: string
-        vehicle_reg_no:
           type: string
         chassis_number:
           type: string
@@ -569,13 +581,46 @@ components:
           type: string
           format: date-time
 
-    TrackingDeviceStatusComposite:
+    TrackingDeviceCreated:
       type: object
-      description: Device details combined with its most recent ping
+      description: >
+        Returned only on POST /tracking-devices (device registration).
+        Includes the plain-text firmware token exactly once — it cannot
+        be retrieved again after this response. Record it immediately
+        for device provisioning.
       properties:
         device_id:
           type: string
-          
+          format: uuid
+          example: dddddddd-0001-0001-0001-000000000001
+        device_serial_no:
+          type: string
+          example: SLPGPS000201
+        device_status:
+          type: string
+          enum: [ACTIVE, INACTIVE, FAULTY, DECOMMISSIONED]
+          example: ACTIVE
+        device_token:
+          type: string
+          description: >
+            Plain-text firmware token for this device. Format: FIRMTUKTUKXXXX.
+            Shown once at registration — store it securely before closing this response.
+            This field does not appear in any other endpoint response.
+          example: FIRMTUKTUK0042
+        created_time:
+          type: string
+          format: date-time
+        updated_time:
+          type: string
+          format: date-time
+
+    TrackingDeviceStatusComposite:
+      type: object
+      description: Device details combined with its assignment and most recent ping
+      properties:
+        device_id:
+          type: string
+          format: uuid
         device_serial_no:
           type: string
         device_status:
@@ -587,16 +632,28 @@ components:
           properties:
             vehicle_id:
               type: string
-              
+              format: uuid
             license_plate_no:
-              type: string
-            vehicle_reg_no:
               type: string
             vehicle_status:
               type: string
         latest_ping:
           $ref: '#/components/schemas/LocationPing'
           nullable: true
+        minutes_since_last_ping:
+          type: integer
+          nullable: true
+          description: >
+            How many whole minutes have elapsed since the most recent ping.
+            Null if the device has never sent a ping.
+          example: 4
+        is_recently_active:
+          type: boolean
+          description: >
+            True if a ping was received within the last 15 minutes.
+            False if the most recent ping is older than 15 minutes.
+            Null/false if the device has never sent a ping.
+          example: true
 
     LocationPing:
       type: object
@@ -1976,7 +2033,6 @@ paths:
                 - owner_id
                 - district_id
                 - license_plate_no
-                - vehicle_reg_no
                 - chassis_number
                 - engine_number
                 - make_of_vehicle
@@ -1994,9 +2050,6 @@ paths:
                 license_plate_no:
                   type: string
                   example: WP CAB-1234
-                vehicle_reg_no:
-                  type: string
-                  example: VR-2023-001234
                 chassis_number:
                   type: string
                   example: MA3FJEB1S00123456
@@ -2039,7 +2092,7 @@ paths:
                       data:
                         $ref: '#/components/schemas/Vehicle'
         '409':
-          description: license_plate_no, vehicle_reg_no, chassis_number, or engine_number already exists
+          description: license_plate_no, chassis_number, or engine_number already exists
           content:
             application/json:
               schema:
@@ -2084,7 +2137,7 @@ paths:
       tags: [Vehicles]
       summary: Update a vehicle
       description: >
-        Requires vehicle:edit. Immutable fields: license_plate_no, vehicle_reg_no,
+        Requires vehicle:edit. Immutable fields: license_plate_no,
         chassis_number, engine_number, status, device_id.
         Use POST /vehicles/{licensePlateNo}/change-status for status changes.
         Use POST /assignments/assign-device for device changes.
@@ -2762,7 +2815,12 @@ paths:
     post:
       tags: [Tracking Devices]
       summary: Register a new tracking device
-      description: Requires device:create.
+      description: >
+        Requires device:create. Automatically generates a unique firmware token
+        (FIRMTUKTUKXXXX format), hashes it, and stores only the hash.
+        The plain-text token is returned in this response exactly once —
+        it must be recorded immediately for device provisioning and cannot
+        be recovered after this response is closed.
       requestBody:
         required: true
         content:
@@ -2776,7 +2834,10 @@ paths:
                   example: SLPGPS000201
       responses:
         '201':
-          description: Tracking device registered
+          description: >
+            Tracking device registered. The device_token in the response body
+            is the only time the plain-text firmware token is visible —
+            record it before closing this response.
           content:
             application/json:
               schema:
@@ -2785,7 +2846,7 @@ paths:
                   - type: object
                     properties:
                       data:
-                        $ref: '#/components/schemas/TrackingDevice'
+                        $ref: '#/components/schemas/TrackingDeviceCreated'
         '409':
           description: device_serial_no already registered
           content:
@@ -3034,26 +3095,36 @@ paths:
       tags: [Location Pings]
       summary: Submit a GPS ping from a tracking device
       description: >
-        Submits a new GPS coordinate ping from a tracking device.
-        The device must exist, must not be DECOMMISSIONED, and must be
-        assigned to a vehicle. The requesting user must have jurisdiction
-        over the district of the assigned vehicle.
-        Requires location:view_history permission.
-        ping_timestamp defaults to server time if not provided —
-        useful for devices that support offline-sync after connectivity gaps.
+        Device-to-server endpoint. No JWT required — hardware tracking devices
+        authenticate using the X-Device-Token header carrying their firmware token
+        (FIRMTUKTUKXXXX). The server hashes the incoming token and resolves the
+        device record from the hash. No device_id needs to be sent — the token
+        is the sole credential and identity.
+ 
+ 
+        The device must not be DECOMMISSIONED and must be currently assigned to a
+        vehicle. ping_timestamp defaults to server time if omitted, which supports
+        offline-sync after connectivity gaps.
+      security:
+        - DeviceTokenAuth: []
+      parameters:
+        - name: X-Device-Token
+          in: header
+          required: true
+          description: >
+            Firmware token issued to this device at registration (FIRMTUKTUKXXXX format).
+            The server hashes the value and looks up the matching device record.
+          schema:
+            type: string
+            example: FIRMTUKTUK0042
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [device_id, latitude, longitude]
+              required: [latitude, longitude]
               properties:
-                device_id:
-                  type: string
-                  
-                  description: The UUID of the tracking device submitting the ping
-                  example: a1345168-cf7b-5624-8889-a447df42141b
                 latitude:
                   type: number
                   format: double
@@ -3094,8 +3165,14 @@ paths:
                     properties:
                       data:
                         $ref: '#/components/schemas/LocationPing'
-        '404':
-          description: Tracking device not found or decommissioned
+        '401':
+          description: X-Device-Token header missing or token does not match any device
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Device token is valid but the device has been decommissioned
           content:
             application/json:
               schema:
@@ -3106,6 +3183,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+ 
 
   # ============================================================
   # ASSIGNMENTS (Controller Resources)
@@ -3249,8 +3327,6 @@ paths:
                             type: string
                             
                           license_plate_no:
-                            type: string
-                          vehicle_reg_no:
                             type: string
                           status:
                             type: string

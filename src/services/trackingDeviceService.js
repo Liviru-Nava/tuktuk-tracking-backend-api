@@ -1,7 +1,9 @@
 //tracking device service to handle business logic
 
+import crypto from 'crypto';
 import { v4 as uuidv4 } from 'uuid';
 import * as trackingDeviceRepository from '../repositories/trackingDeviceRepository.js';
+import { hmac } from '../utils/encryption.js';
 import { getPaginationParams, buildCollection } from '../utils/paginationUtils.js';
 
 // resolves the district IDs the requesting user is allowed to see
@@ -86,7 +88,7 @@ export async function getAllDevices(queryParams, requestingUser) {
     });
 
     return buildCollection(
-        '/api/v1/tracking-devices',
+        '/tuktrack/v1/tracking-devices',
         offset,
         limit,
         totalDeviceCount,
@@ -115,6 +117,15 @@ export async function getDeviceById(deviceId, requestingUser) {
     };
 }
 
+// Generates the next firmware token in the FIRMTUKTUK0001 sequence.
+// Queries the current highest sequence number from existing tokens and increments.
+// Falls back to sequence 1 if no tokens exist yet.
+async function generateFirmwareToken() {
+    const result = await trackingDeviceRepository.getHighestTokenSequence();
+    const nextSequence = (result ?? 0) + 1;
+    return `FIRMTUKTUK${String(nextSequence).padStart(4, '0')}`;
+}
+
 export async function createDevice(requestBody, requestingUser) {
     const { device_serial_no } = requestBody;
 
@@ -133,11 +144,23 @@ export async function createDevice(requestBody, requestingUser) {
         };
     }
 
-    return trackingDeviceRepository.createDevice({
-        device_id:        uuidv4(),
-        device_serial_no: device_serial_no.trim().toUpperCase(),
-        device_status:    'ACTIVE',
+    const firmwareToken    = await generateFirmwareToken();
+    const deviceTokenHash  = hmac(firmwareToken);
+
+    const createdDevice = await trackingDeviceRepository.createDevice({
+        device_id:         uuidv4(),
+        device_serial_no:  device_serial_no.trim().toUpperCase(),
+        device_status:     'ACTIVE',
+        device_token_hash: deviceTokenHash,
     });
+
+    // Return the plain-text firmware token exactly once — this is the only time
+    // it is ever visible. It must be securely recorded at provisioning time.
+    // It is not stored anywhere in plain text and cannot be recovered after this.
+    return {
+        ...createdDevice,
+        device_token: firmwareToken,
+    };
 }
 
 export async function updateDevice(deviceId, requestBody, requestingUser) {
@@ -266,7 +289,7 @@ export async function getDeviceLocationPings(deviceId, queryParams, requestingUs
     );
 
     return buildCollection(
-        `/api/v1/tracking-devices/${deviceId}/location-pings`,
+        `/tuktrack/v1/tracking-devices/${deviceId}/location-pings`,
         offset,
         limit,
         totalPingCount,
@@ -280,13 +303,14 @@ export async function changeDeviceStatus(deviceId, requestBody, requestingUser) 
         throw { statusCode: 400, message: 'Device ID is required' };
     }
 
-    const { status: newStatus } = requestBody;
+    const { status: newStatus, device_status: newDeviceStatus } = requestBody;
+    const resolvedStatus = newStatus || newDeviceStatus;
 
     const allowedStatusValues = ['ACTIVE', 'INACTIVE', 'FAULTY', 'DECOMMISSIONED'];
-    if (!newStatus || !allowedStatusValues.includes(newStatus)) {
+    if (!resolvedStatus || !allowedStatusValues.includes(resolvedStatus)) {
         throw {
             statusCode: 400,
-            message: `status must be one of: ${allowedStatusValues.join(', ')}`,
+            message: `device_status must be one of: ${allowedStatusValues.join(', ')}`,
         };
     }
 
@@ -300,12 +324,12 @@ export async function changeDeviceStatus(deviceId, requestBody, requestingUser) 
         throw { statusCode: 409, message: 'A decommissioned device cannot have its status changed' };
     }
 
-    if (existingDevice.device_status === newStatus) {
-        throw { statusCode: 409, message: `Device status is already ${newStatus}` };
+    if (existingDevice.device_status === resolvedStatus) {
+        throw { statusCode: 409, message: `Device status is already ${resolvedStatus}` };
     }
 
     // if setting to DECOMMISSIONED, make sure device is not assigned to a vehicle
-    if (newStatus === 'DECOMMISSIONED') {
+    if (resolvedStatus === 'DECOMMISSIONED') {
         const assignedVehicle = await trackingDeviceRepository.findVehicleAssignedToDevice(existingDevice.device_id);
         if (assignedVehicle) {
             throw {
@@ -315,5 +339,5 @@ export async function changeDeviceStatus(deviceId, requestBody, requestingUser) 
         }
     }
 
-    return trackingDeviceRepository.changeDeviceStatus(deviceId, newStatus);
+    return trackingDeviceRepository.changeDeviceStatus(deviceId, resolvedStatus);
 }

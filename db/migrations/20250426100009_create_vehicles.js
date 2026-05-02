@@ -15,7 +15,6 @@ export async function up(knex) {
     table.uuid('district_id').notNullable().references('district_id').inTable('districts').onDelete('RESTRICT');
     table.uuid('device_id').nullable().references('device_id').inTable('tracking_devices').onDelete('SET NULL');
     table.string('license_plate_no', 20).notNullable().unique();
-    table.string('vehicle_reg_no', 20).notNullable().unique();
     table.string('chassis_number', 50).notNullable().unique();
     table.string('engine_number', 50).notNullable().unique();
     table.string('make_of_vehicle', 100).notNullable();

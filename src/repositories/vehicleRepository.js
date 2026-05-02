@@ -5,7 +5,6 @@ import db from '../config/knex.js';
 const basicVehicleColumns = [
     'vehicles.vehicle_id',
     'vehicles.license_plate_no',
-    'vehicles.vehicle_reg_no',
     'vehicles.chassis_number',
     'vehicles.engine_number',
     'vehicles.make_of_vehicle',
@@ -148,10 +147,6 @@ export async function findVehicleByLicensePlate(licensePlateNo) {
             'provinces.province_name',
         )
         .first();
-}
-
-export async function findVehicleByRegNo(vehicleRegNo) {
-    return db('vehicles').where({ vehicle_reg_no: vehicleRegNo }).first();
 }
 
 export async function findVehicleByChassisNumber(chassisNumber) {

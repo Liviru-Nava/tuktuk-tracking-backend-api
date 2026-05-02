@@ -8,7 +8,7 @@ export async function submitLocationPing(request, response) {
     try {
         const insertedPing = await locationPingService.submitLocationPing(
             request.body,
-            request.user,
+            request.device,
         );
         return sendSuccess(response, 201, 'Location ping submitted successfully', insertedPing);
     } catch (error) {
