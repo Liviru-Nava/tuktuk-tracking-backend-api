@@ -16,7 +16,8 @@ export async function getAllDrivers(request, response) {
 
 export async function getDriverById(request, response) {
     try {
-        const foundDriver = await driverService.getDriverById(request.params.driverId, request.user);
+        console.log('Fetching driver with license no:', request.params.driverLicenseNo);
+        const foundDriver = await driverService.getDriverById(request.params.driverLicenseNo, request.user);
         return sendSuccess(response, 200, 'Driver retrieved successfully', foundDriver);
     } catch (error) {
         if (error.statusCode) return sendError(response, error.statusCode, error.message);
@@ -39,7 +40,7 @@ export async function createDriver(request, response) {
 export async function updateDriver(request, response) {
     try {
         const updatedDriver = await driverService.updateDriver(
-            request.params.driverId,
+            request.params.driverLicenseNo,
             request.body,
             request.user,
         );
@@ -54,7 +55,7 @@ export async function updateDriver(request, response) {
 export async function suspendDriver(request, response) {
     try {
         const suspendedDriver = await driverService.suspendDriver(
-            request.params.driverId,
+            request.params.driverLicenseNo,
             request.user,
         );
         return sendSuccess(response, 200, 'Driver suspended successfully', suspendedDriver);
@@ -68,7 +69,7 @@ export async function suspendDriver(request, response) {
 export async function changeDriverStatus(request, response) {
     try {
         const updatedDriver = await driverService.changeDriverStatus(
-            request.params.driverId,
+            request.params.driverLicenseNo,
             request.body,
             request.user,
         );

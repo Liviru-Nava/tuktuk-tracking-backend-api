@@ -16,7 +16,7 @@ export async function getAllVehicles(request, response) {
 
 export async function getVehicleById(request, response) {
     try {
-        const foundVehicle = await vehicleService.getVehicleById(request.params.vehicleId, request.user);
+        const foundVehicle = await vehicleService.getVehicleById(request.params.licensePlateNo, request.user);
         return sendSuccess(response, 200, 'Vehicle retrieved successfully', foundVehicle);
     } catch (error) {
         if (error.statusCode) return sendError(response, error.statusCode, error.message);
@@ -27,7 +27,7 @@ export async function getVehicleById(request, response) {
 
 export async function getVehicleFullProfile(request, response) {
     try {
-        const vehicleProfile = await vehicleService.getVehicleFullProfile(request.params.vehicleId, request.user);
+        const vehicleProfile = await vehicleService.getVehicleFullProfile(request.params.licensePlateNo, request.user);
         return sendSuccess(response, 200, 'Vehicle profile retrieved successfully', vehicleProfile);
     } catch (error) {
         if (error.statusCode) return sendError(response, error.statusCode, error.message);
@@ -50,7 +50,7 @@ export async function createVehicle(request, response) {
 export async function updateVehicle(request, response) {
     try {
         const updatedVehicle = await vehicleService.updateVehicle(
-            request.params.vehicleId,
+            request.params.licensePlateNo,
             request.body,
             request.user,
         );
@@ -65,7 +65,7 @@ export async function updateVehicle(request, response) {
 export async function deregisterVehicle(request, response) {
     try {
         const deregisteredVehicle = await vehicleService.deregisterVehicle(
-            request.params.vehicleId,
+            request.params.licensePlateNo,
             request.user,
         );
         return sendSuccess(response, 200, 'Vehicle deregistered successfully', deregisteredVehicle);
@@ -79,7 +79,7 @@ export async function deregisterVehicle(request, response) {
 export async function changeVehicleStatus(request, response) {
     try {
         const updatedVehicle = await vehicleService.changeVehicleStatus(
-            request.params.vehicleId,
+            request.params.licensePlateNo,
             request.body,
             request.user,
         );
@@ -87,70 +87,6 @@ export async function changeVehicleStatus(request, response) {
     } catch (error) {
         if (error.statusCode) return sendError(response, error.statusCode, error.message);
         console.error('[VEHICLE] changeVehicleStatus error:', error);
-        return sendError(response, 500, 'Internal server error');
-    }
-}
-
-export async function getVehicleDriverHistory(request, response) {
-    try {
-        const result = await vehicleService.getVehicleDriverHistory(
-            request.params.vehicleId,
-            request.query,
-            request.user,
-        );
-        return sendCollection(
-            response,
-            200,
-            `Driver history for vehicle ${result.vehicle.license_plate_no} retrieved successfully`,
-            result.collection,
-        );
-    } catch (error) {
-        if (error.statusCode) return sendError(response, error.statusCode, error.message);
-        console.error('[VEHICLE] getVehicleDriverHistory error:', error);
-        return sendError(response, 500, 'Internal server error');
-    }
-}
-
-export async function getSpecificAssignment(request, response) {
-    try {
-        const foundAssignment = await vehicleService.getSpecificAssignment(
-            request.params.vehicleId,
-            request.params.assignmentId,
-            request.user,
-        );
-        return sendSuccess(response, 200, 'Assignment retrieved successfully', foundAssignment);
-    } catch (error) {
-        if (error.statusCode) return sendError(response, error.statusCode, error.message);
-        console.error('[VEHICLE] getSpecificAssignment error:', error);
-        return sendError(response, 500, 'Internal server error');
-    }
-}
-
-export async function getVehicleLocationHistory(request, response) {
-    try {
-        const collectionOfPings = await vehicleService.getVehicleLocationHistory(
-            request.params.vehicleId,
-            request.query,
-            request.user,
-        );
-        return sendCollection(response, 200, 'Location history retrieved successfully', collectionOfPings);
-    } catch (error) {
-        if (error.statusCode) return sendError(response, error.statusCode, error.message);
-        console.error('[VEHICLE] getVehicleLocationHistory error:', error);
-        return sendError(response, 500, 'Internal server error');
-    }
-}
-
-export async function getVehicleLastLocation(request, response) {
-    try {
-        const lastLocationData = await vehicleService.getVehicleLastLocation(
-            request.params.vehicleId,
-            request.user,
-        );
-        return sendSuccess(response, 200, 'Last known location retrieved successfully', lastLocationData);
-    } catch (error) {
-        if (error.statusCode) return sendError(response, error.statusCode, error.message);
-        console.error('[VEHICLE] getVehicleLastLocation error:', error);
         return sendError(response, 500, 'Internal server error');
     }
 }

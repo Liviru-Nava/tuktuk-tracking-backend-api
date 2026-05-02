@@ -55,7 +55,7 @@ export async function getAllProvinces(query, user) {
   }
 
   return buildCollection(
-    '/api/v1/provinces',
+    '/tuktrack/v1/provinces',
     offset,
     limit,
     total,
@@ -90,34 +90,4 @@ export async function getProvinceById(provinceId, user) {
 
   console.log('Returning province:', province);
   return province;
-}
-
-export async function getDistrictsByProvince(provinceId, query, user) {
-  if (!provinceId) {
-    throw { statusCode: 400, message: 'Province ID is required' };
-  }
-
-  const province = await provinceRepo.findProvinceById(provinceId);
-  if (!province) {
-    throw { statusCode: 404, message: 'Province not found' };
-  }
-
-  const allowedProvinceId = await resolveAllowedProvinceId(user);
-  if (allowedProvinceId && province.province_id !== allowedProvinceId) {
-    throw { statusCode: 403, message: 'You do not have access to this province' };
-  }
-
-  const { limit, offset } = getPaginationParams(query);
-  const [districts, total] = await Promise.all([
-    provinceRepo.findDistrictsByProvinceId(provinceId, { limit, offset }),
-    provinceRepo.countDistrictsByProvinceId(provinceId),
-  ]);
-
-  return {
-    province,
-    collection: buildCollection(
-      `/api/v1/provinces/${provinceId}/districts`,
-      offset, limit, total, districts,
-    ),
-  };
 }

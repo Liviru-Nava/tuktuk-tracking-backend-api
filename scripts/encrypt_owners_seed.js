@@ -12,7 +12,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-// ── Encryption Pramaters
+// ── Encryption Parameters ─────────────────────────────────────────────────────
 const ALGORITHM = 'aes-256-gcm';
 const IV_LENGTH  = 12;
 const TAG_LENGTH = 16;
@@ -36,7 +36,20 @@ function encrypt(plaintext) {
   return [iv.toString('base64'), authTag.toString('base64'), encrypted.toString('base64')].join(':');
 }
 
+/**
+ * Deterministic HMAC-SHA256 blind index.
+ * Same key + same plaintext always yields the same hex digest, which allows
+ * exact-match WHERE queries on encrypted columns without a full table scan.
+ */
+function hmac(plaintext) {
+  if (plaintext === null || plaintext === undefined) return null;
+  return crypto
+    .createHmac('sha256', getKey())
+    .update(String(plaintext))
+    .digest('hex');
+}
 
+// ── EXACT UUIDs from original ─────────────────────────────────────────────────
 const OWNER_UUIDS = [
   '5f0f6642-bc9c-50de-9aca-80e0acf9a9df',
   '50459402-76b1-5668-9e99-1fde36dc0e7c',
@@ -240,7 +253,7 @@ const OWNER_UUIDS = [
   '9baad457-83b7-58f6-9a9e-fef370ce4da2',
 ];
 
-// ── Data helpers ────
+// ── Data helpers ──────────────────────────────────────────────────────────────
 const SINHALA_FIRST = ['Nimal','Kamal','Saman','Sunil','Rohan','Priya','Anura','Chamara',
   'Thilak','Ruwan','Lasith','Dinesh','Mahesh','Nuwan','Isuru','Dilan','Harsha','Tharaka',
   'Buddhika','Chanaka','Malinda','Kasun','Dhanushka','Ravindra','Sanjeewa','Indika',
@@ -288,7 +301,7 @@ function phone(idx) {
   return `+94${prefixes[idx % prefixes.length]}${String(randInt(1000000, 9999999))}`;
 }
 
-// ── Generate owners ───
+// ── Generate owners ───────────────────────────────────────────────────────────
 console.log('\n  Encrypting owner PII fields...\n');
 
 const owners = [];
@@ -296,19 +309,20 @@ for (let i = 1; i <= 200; i++) {
   const districtName = DISTRICT_NAMES[(i - 1) % DISTRICT_NAMES.length];
   const gender = (i % 4 === 0) ? 'FEMALE' : 'MALE';
   const houseNo = randInt(1, 250);
-  const plainNIC = syntheticNIC(i);
-  const plainPhone = phone(i);
+  const plainNIC     = syntheticNIC(i).trim().toUpperCase();
+  const plainPhone   = phone(i);
   const plainAddress = `No.${houseNo}, ${districtName} Road, ${districtName}`;
 
   owners.push({
-    owner_id:          OWNER_UUIDS[i - 1],
-    owner_fullname:    fullName(i),
-    owner_identity_no: encrypt(plainNIC),
-    owner_id_type:     'NIC',
-    owner_gender:      gender,
-    owner_contact:     encrypt(plainPhone),
-    owner_address:     encrypt(plainAddress),
-    status:            (i % 20 === 0) ? 'INACTIVE' : 'ACTIVE',
+    owner_id:               OWNER_UUIDS[i - 1],
+    owner_fullname:         fullName(i),
+    owner_identity_no:      encrypt(plainNIC),
+    owner_identity_no_hmac: hmac(plainNIC),
+    owner_id_type:          'NIC',
+    owner_gender:           gender,
+    owner_contact:          encrypt(plainPhone),
+    owner_address:          encrypt(plainAddress),
+    status:                 (i % 20 === 0) ? 'INACTIVE' : 'ACTIVE',
   });
 }
 
@@ -316,10 +330,11 @@ console.log('Sample (first 3):');
 owners.slice(0, 3).forEach((o, idx) => {
   console.log(`[${idx+1}] UUID: ${o.owner_id}`);
   console.log(`NIC ciphertext: ${o.owner_identity_no.slice(0, 45)}...`);
+  console.log(`NIC HMAC:       ${o.owner_identity_no_hmac}`);
 });
 console.log(`\n  Total: ${owners.length} owners\n`);
 
-// ── Write seed file ───
+// ── Write seed file ───────────────────────────────────────────────────────────
 function toJsValue(v) {
   if (v === null || v === undefined) return 'null';
   if (typeof v === 'boolean')        return v ? 'true' : 'false';
@@ -336,9 +351,10 @@ const output = `// db/seeds/06_owners_seed.js
 // 200 synthetic tuk-tuk owners distributed across all 25 Sri Lanka districts.
 //
 // PDPA Compliance — encrypted at rest with AES-256-GCM:
-//   owner_identity_no  (NIC number)
-//   owner_contact      (phone number)
-//   owner_address      (residential address)
+//   owner_identity_no       (NIC number — ciphertext, non-deterministic)
+//   owner_identity_no_hmac  (HMAC-SHA256 blind index — deterministic, used for lookups)
+//   owner_contact           (phone number)
+//   owner_address           (residential address)
 //
 // UUIDs match 08_vehicles.js owner_id foreign keys exactly.
 // Service layer decrypts before returning API responses.
@@ -359,6 +375,7 @@ ${rows}
 `;
 
 const outPath = path.join(__dirname, '..', 'db', 'seeds', '06_owners_seed.js');
+fs.mkdirSync(path.dirname(outPath), { recursive: true });
 fs.writeFileSync(outPath, output, 'utf8');
 console.log('Written: db/seeds/06_owners_seed.js');
 console.log('UUIDs preserved — vehicle FK relationships intact.\n');

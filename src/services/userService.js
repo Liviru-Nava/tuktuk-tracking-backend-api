@@ -284,7 +284,7 @@ export async function updateUser(userId, requestBody, requestingUser) {
 
     if (requestBody.email_address !== undefined) {
         const duplicateEmailUser = await userRepository.getUserByEmail(requestBody.email_address);
-        if (duplicateEmailUser && duplicateEmailUser.user_id !== userId) {
+        if (duplicateEmailUser && duplicateEmailUser.user_id !== existingUser.user_id) {
             throw { statusCode: 409, message: 'Email address is already in use by another user' };
         }
         fieldsToUpdate.email_address = requestBody.email_address.trim().toLowerCase();

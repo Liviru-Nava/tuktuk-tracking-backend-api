@@ -16,7 +16,7 @@ export async function getAllDevices(request, response) {
 
 export async function getDeviceById(request, response) {
     try {
-        const foundDevice = await trackingDeviceService.getDeviceById(request.params.deviceId, request.user);
+        const foundDevice = await trackingDeviceService.getDeviceById(request.params.deviceSerialNo, request.user);
         return sendSuccess(response, 200, 'Tracking device retrieved successfully', foundDevice);
     } catch (error) {
         if (error.statusCode) return sendError(response, error.statusCode, error.message);
@@ -39,7 +39,7 @@ export async function createDevice(request, response) {
 export async function updateDevice(request, response) {
     try {
         const updatedDevice = await trackingDeviceService.updateDevice(
-            request.params.deviceId,
+            request.params.deviceSerialNo,
             request.body,
             request.user,
         );
@@ -54,7 +54,7 @@ export async function updateDevice(request, response) {
 export async function decommissionDevice(request, response) {
     try {
         const decommissionedDevice = await trackingDeviceService.decommissionDevice(
-            request.params.deviceId,
+            request.params.deviceSerialNo,
             request.user,
         );
         return sendSuccess(response, 200, 'Tracking device decommissioned successfully', decommissionedDevice);
@@ -68,7 +68,7 @@ export async function decommissionDevice(request, response) {
 export async function getDeviceStatusComposite(request, response) {
     try {
         const deviceStatusData = await trackingDeviceService.getDeviceStatusComposite(
-            request.params.deviceId,
+            request.params.deviceSerialNo,
             request.user,
         );
         return sendSuccess(response, 200, 'Device status retrieved successfully', deviceStatusData);
@@ -82,7 +82,7 @@ export async function getDeviceStatusComposite(request, response) {
 export async function getDeviceLocationPings(request, response) {
     try {
         const collectionOfPings = await trackingDeviceService.getDeviceLocationPings(
-            request.params.deviceId,
+            request.params.deviceSerialNo,
             request.query,
             request.user,
         );
@@ -97,7 +97,7 @@ export async function getDeviceLocationPings(request, response) {
 export async function changeDeviceStatus(request, response) {
     try {
         const updatedDevice = await trackingDeviceService.changeDeviceStatus(
-            request.params.deviceId,
+            request.params.deviceSerialNo,
             request.body,
             request.user,
         );

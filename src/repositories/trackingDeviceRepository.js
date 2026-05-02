@@ -44,7 +44,7 @@ export async function findAllDevices({ limit, offset, deviceIdsToFilterBy, searc
 
 export async function findDeviceById(deviceId) {
     return db('tracking_devices')
-        .where({ device_id: deviceId })
+        .where({ device_serial_no: deviceId })
         .select(deviceColumns)
         .first();
 }
@@ -64,7 +64,7 @@ export async function createDevice(newDeviceData) {
 
 export async function updateDevice(deviceId, fieldsToUpdate) {
     const [updatedDevice] = await db('tracking_devices')
-        .where({ device_id: deviceId })
+        .where({ device_serial_no: deviceId })
         .update({ ...fieldsToUpdate, updated_time: db.fn.now() })
         .returning(deviceColumns);
     return updatedDevice;
@@ -72,7 +72,7 @@ export async function updateDevice(deviceId, fieldsToUpdate) {
 
 export async function changeDeviceStatus(deviceId, newStatus) {
     const [updatedDevice] = await db('tracking_devices')
-        .where({ device_id: deviceId })
+        .where({ device_serial_no: deviceId })
         .update({ device_status: newStatus, updated_time: db.fn.now() })
         .returning(deviceColumns);
     return updatedDevice;

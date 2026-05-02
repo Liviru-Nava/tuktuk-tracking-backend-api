@@ -16,7 +16,7 @@ export async function getAllUsers(request, response) {
 
 export async function getUserById(request, response) {
     try {
-        const foundUser = await userService.getUserById(request.params.userId, request.user);
+        const foundUser = await userService.getUserById(request.params.badgeId, request.user);
         return sendSuccess(response, 200, 'User retrieved successfully', foundUser);
     } catch (error) {
         if (error.statusCode) return sendError(response, error.statusCode, error.message);
@@ -39,7 +39,7 @@ export async function createUser(request, response) {
 export async function updateUser(request, response) {
     try {
         const updatedUser = await userService.updateUser(
-            request.params.userId,
+            request.params.badgeId,
             request.body,
             request.user,
         );
@@ -54,7 +54,7 @@ export async function updateUser(request, response) {
 export async function deactivateUser(request, response) {
     try {
         const deactivatedUser = await userService.deactivateUser(
-            request.params.userId,
+            request.params.badgeId,
             request.user,
         );
         return sendSuccess(response, 200, 'User deactivated successfully', deactivatedUser);
@@ -68,7 +68,7 @@ export async function deactivateUser(request, response) {
 export async function resetUserPassword(request, response) {
     try {
         const resetResult = await userService.resetUserPassword(
-            request.params.userId,
+            request.params.badgeId,
             request.body,
             request.user,
         );

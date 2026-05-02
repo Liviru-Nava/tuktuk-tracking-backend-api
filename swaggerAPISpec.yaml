@@ -1,0 +1,3274 @@
+openapi: 3.0.3
+
+info:
+  title: Real-Time Tuk-Tuk Tracking and Movement Logging System
+  description: >
+    RESTful Web API for Sri Lanka Police to track and manage registered three-wheelers
+    (tuk-tuks) in real time. Provides GPS-based location pings, historical movement logs,
+    vehicle and driver management, and secure access for authorised users at Police
+    Headquarters, Provincial offices, and District/Station level.
+
+
+    **Authentication:** All endpoints (except /auth/login and /auth/refresh) require a
+    Bearer JWT access token in the Authorization header. Tokens expire after 15 minutes.
+    Use POST /auth/refresh to obtain a new token.
+
+
+    **Jurisdiction:** Responses are automatically scoped to the requesting user's
+    jurisdiction (NATIONAL / PROVINCIAL / DISTRICT / STATION). A station officer will
+    only ever see data within their district.
+
+
+    **PII:** Fields such as owner_identity_no, owner_contact, driver_identity_no,
+    driver_license_no, and driver_contact_no are AES-256-GCM encrypted at rest.
+    They are decrypted in the service layer before being returned in API responses.
+  version: 1.0.0
+  contact:
+    name: NB6007CEM Web API Development — NIBM / Coventry University
+
+servers:
+  - url: http://localhost:3000/tuktrack/v1
+    description: Local development server
+
+tags:
+  - name: Auth
+    description: Login, token refresh, and logout
+  - name: Provinces
+    description: Sri Lanka province reference data
+  - name: Districts
+    description: Sri Lanka district reference data
+  - name: Roles
+    description: System role definitions and permission arrays
+  - name: Offices
+    description: Police offices — HQ, Provincial HQs, District HQs, Divisional Stations
+  - name: Users
+    description: System users — police officers at all jurisdiction levels
+  - name: Owners
+    description: Registered tuk-tuk owners
+  - name: Vehicles
+    description: Registered tuk-tuks including location history and driver assignment history
+  - name: Drivers
+    description: Licensed tuk-tuk drivers
+  - name: Tracking Devices
+    description: GPS tracking devices installed in tuk-tuks
+  - name: Location Pings
+    description: GPS ping submission from tracking devices
+  - name: Assignments
+    description: Controller resources for assigning and unassigning drivers and devices
+
+# ─────────────────────────────────────────────────────────────
+# SECURITY
+# ─────────────────────────────────────────────────────────────
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: >
+        JWT access token obtained from POST /auth/login.
+        Expires after 15 minutes. Refresh using POST /auth/refresh.
+
+# ─────────────────────────────────────────────────────────────
+# REUSABLE SCHEMAS
+# ─────────────────────────────────────────────────────────────
+  schemas:
+
+    # --- Generic response wrappers ---
+
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: Resource retrieved successfully
+        data:
+          type: object
+          description: The returned resource. Shape varies per endpoint.
+
+    CollectionResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: Resources retrieved successfully
+        collection:
+          $ref: '#/components/schemas/PaginatedCollection'
+
+    PaginatedCollection:
+      type: object
+      properties:
+        href:
+          type: string
+          example: /tuktrack/v1/vehicles?offset=0&limit=10
+        offset:
+          type: integer
+          example: 0
+        limit:
+          type: integer
+          example: 10
+        total:
+          type: integer
+          example: 200
+        first:
+          type: string
+          example: /tuktrack/v1/vehicles?offset=0&limit=10
+        previous:
+          type: string
+          nullable: true
+          example: null
+        next:
+          type: string
+          nullable: true
+          example: /tuktrack/v1/vehicles?offset=10&limit=10
+        last:
+          type: string
+          example: /tuktrack/v1/vehicles?offset=190&limit=10
+        count:
+          type: integer
+          example: 10
+        items:
+          type: array
+          items:
+            type: object
+
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        message:
+          type: string
+          example: Resource not found
+
+    # --- Domain schemas ---
+
+    Province:
+      type: object
+      properties:
+        province_id:
+          type: string
+          
+          example: 11111111-0001-0001-0001-000000000001
+        province_name:
+          type: string
+          example: Western Province
+        province_code:
+          type: string
+          example: WP
+        created_time:
+          type: string
+          format: date-time
+
+    District:
+      type: object
+      properties:
+        district_id:
+          type: string
+          
+          example: 22222222-0001-0001-0001-000000000001
+        province_id:
+          type: string
+          
+        district_name:
+          type: string
+          example: Colombo
+        district_code:
+          type: string
+          example: CMB
+        created_time:
+          type: string
+          format: date-time
+
+    Role:
+      type: object
+      properties:
+        role_id:
+          type: string
+          
+        role_name:
+          type: string
+          enum:
+            - HQ_SUPER_ADMIN
+            - HQ_OFFICER
+            - PROVINCIAL_HEAD
+            - PROVINCIAL_OFFICER
+            - DISTRICT_HEAD
+            - DISTRICT_OFFICER
+            - STATION_HEAD
+            - STATION_OFFICER
+        role_description:
+          type: string
+        user_management_scope:
+          type: string
+          enum: [NATIONAL, PROVINCIAL, DISTRICT, STATION, NONE]
+        permissions:
+          type: array
+          items:
+            type: string
+          example:
+            - vehicle:view
+            - location:view_live
+            - location:view_history
+
+    Office:
+      type: object
+      properties:
+        office_id:
+          type: string
+          
+        office_code:
+          type: string
+          example: SLP-HQ-001
+        office_name:
+          type: string
+          example: Sri Lanka Police Headquarters
+        office_type:
+          type: string
+          enum: [HEADQUARTERS, PROVINCIAL_HQ, DISTRICT_HQ, DIVISIONAL_STATION]
+        jurisdiction_type:
+          type: string
+          enum: [NATIONAL, PROVINCIAL, DISTRICT]
+        jurisdiction_ref_id:
+          type: string
+          
+          nullable: true
+          description: >
+            NULL for NATIONAL jurisdiction.
+            province_id for PROVINCIAL.
+            district_id for DISTRICT.
+        office_address:
+          type: string
+          nullable: true
+        office_contact:
+          type: string
+          nullable: true
+          example: "0112-345678"
+        status:
+          type: string
+          enum: [ACTIVE, CLOSED]
+        created_time:
+          type: string
+          format: date-time
+        updated_time:
+          type: string
+          format: date-time
+
+    User:
+      type: object
+      properties:
+        user_id:
+          type: string
+          
+        username:
+          type: string
+          example: officer.silva
+        fullname:
+          type: string
+          example: Kamal Bandara Silva
+        email_address:
+          type: string
+          format: email
+          example: k.silva@police.gov.lk
+        badge_id:
+          type: string
+          example: SLP-12345
+        contact_no:
+          type: string
+          nullable: true
+        office_id:
+          type: string
+          
+        role_id:
+          type: string
+          
+        status:
+          type: string
+          enum: [ACTIVE, INACTIVE, SUSPENDED]
+        last_login_time:
+          type: string
+          format: date-time
+          nullable: true
+        created_time:
+          type: string
+          format: date-time
+        updated_time:
+          type: string
+          format: date-time
+
+    Owner:
+      type: object
+      properties:
+        owner_id:
+          type: string
+          
+        owner_fullname:
+          type: string
+          example: Nimal Perera
+        owner_identity_no:
+          type: string
+          description: Decrypted NIC, passport, or business registration number
+          example: 901234567V
+        owner_id_type:
+          type: string
+          enum: [NIC, PASSPORT, BUSINESS]
+        owner_gender:
+          type: string
+          enum: [MALE, FEMALE, OTHER]
+        owner_contact:
+          type: string
+          nullable: true
+          description: Decrypted contact number
+          example: "0771234567"
+        owner_address:
+          type: string
+          nullable: true
+          description: Decrypted address
+          example: 45/B, Galle Road, Colombo 03
+        status:
+          type: string
+          enum: [ACTIVE, INACTIVE, FLAGGED]
+        created_time:
+          type: string
+          format: date-time
+        updated_time:
+          type: string
+          format: date-time
+
+    Vehicle:
+      type: object
+      properties:
+        vehicle_id:
+          type: string
+          
+        owner_id:
+          type: string
+          
+        district_id:
+          type: string
+          
+        device_id:
+          type: string
+          
+          nullable: true
+        license_plate_no:
+          type: string
+          example: WP CAB-1234
+        vehicle_reg_no:
+          type: string
+          example: VR-2023-001234
+        chassis_number:
+          type: string
+          example: MA3FJEB1S00123456
+        engine_number:
+          type: string
+          example: K10B1234567
+        make_of_vehicle:
+          type: string
+          example: Bajaj
+        model_of_vehicle:
+          type: string
+          example: RE 4S
+        manufacture_year:
+          type: integer
+          example: 2021
+        vehicle_colour:
+          type: string
+          nullable: true
+          example: Yellow
+        fuel_type:
+          type: string
+          enum: [PETROL, CNG, ELECTRIC]
+        is_diplomatic:
+          type: boolean
+          example: false
+        vehicle_reg_date:
+          type: string
+          format: date
+          example: "2021-06-15"
+        status:
+          type: string
+          enum: [ACTIVE, SUSPENDED, FLAGGED, DEREGISTERED]
+        district_name:
+          type: string
+          example: Colombo
+        province_name:
+          type: string
+          example: Western Province
+        created_time:
+          type: string
+          format: date-time
+        updated_time:
+          type: string
+          format: date-time
+
+    VehicleFullProfile:
+      type: object
+      description: Composite response — vehicle + owner + current driver + device
+      properties:
+        vehicle_id:
+          type: string
+          
+        license_plate_no:
+          type: string
+        vehicle_reg_no:
+          type: string
+        chassis_number:
+          type: string
+        engine_number:
+          type: string
+        make_of_vehicle:
+          type: string
+        model_of_vehicle:
+          type: string
+        manufacture_year:
+          type: integer
+        vehicle_colour:
+          type: string
+          nullable: true
+        fuel_type:
+          type: string
+          enum: [PETROL, CNG, ELECTRIC]
+        is_diplomatic:
+          type: boolean
+        vehicle_reg_date:
+          type: string
+          format: date
+        status:
+          type: string
+        district_name:
+          type: string
+        province_name:
+          type: string
+        owner:
+          $ref: '#/components/schemas/Owner'
+        current_driver:
+          $ref: '#/components/schemas/DriverAssignment'
+          nullable: true
+        device:
+          type: object
+          nullable: true
+          properties:
+            device_id:
+              type: string
+              
+            device_serial_no:
+              type: string
+            device_status:
+              type: string
+              enum: [ACTIVE, INACTIVE, FAULTY, DECOMMISSIONED]
+
+    Driver:
+      type: object
+      properties:
+        driver_id:
+          type: string
+          
+        driver_fullname:
+          type: string
+          example: Sunil Rathnayake
+        driver_identity_no:
+          type: string
+          description: Decrypted NIC or passport number
+          example: 851234567V
+        driver_id_type:
+          type: string
+          enum: [NIC, PASSPORT]
+        date_of_birth:
+          type: string
+          format: date
+          example: "1985-04-12"
+        driver_gender:
+          type: string
+          enum: [MALE, FEMALE, OTHER]
+        driver_contact_no:
+          type: string
+          nullable: true
+          description: Decrypted contact number
+        address:
+          type: string
+          nullable: true
+          description: Decrypted address
+        driver_license_no:
+          type: string
+          description: Decrypted licence number
+          example: B1234567
+        license_expiry_date:
+          type: string
+          format: date
+          example: "2027-03-31"
+        status:
+          type: string
+          enum: [ACTIVE, SUSPENDED, BLACKLISTED]
+        created_time:
+          type: string
+          format: date-time
+        updated_time:
+          type: string
+          format: date-time
+
+    DriverAssignment:
+      type: object
+      description: A single entry in the driver assignment history for a vehicle
+      properties:
+        assignment_id:
+          type: string
+          
+        vehicle_id:
+          type: string
+          
+        driver_id:
+          type: string
+          
+        driver_fullname:
+          type: string
+        driver_identity_no:
+          type: string
+          description: Decrypted
+        driver_license_no:
+          type: string
+          description: Decrypted
+        driver_status:
+          type: string
+          enum: [ACTIVE, SUSPENDED, BLACKLISTED]
+        assigned_time:
+          type: string
+          format: date-time
+        unassigned_time:
+          type: string
+          format: date-time
+          nullable: true
+        is_current_driver:
+          type: boolean
+        is_driver_owner:
+          type: boolean
+
+    TrackingDevice:
+      type: object
+      properties:
+        device_id:
+          type: string
+          
+        device_serial_no:
+          type: string
+          example: SLPGPS000001
+        device_status:
+          type: string
+          enum: [ACTIVE, INACTIVE, FAULTY, DECOMMISSIONED]
+        created_time:
+          type: string
+          format: date-time
+        updated_time:
+          type: string
+          format: date-time
+
+    TrackingDeviceStatusComposite:
+      type: object
+      description: Device details combined with its most recent ping
+      properties:
+        device_id:
+          type: string
+          
+        device_serial_no:
+          type: string
+        device_status:
+          type: string
+          enum: [ACTIVE, INACTIVE, FAULTY, DECOMMISSIONED]
+        assigned_vehicle:
+          type: object
+          nullable: true
+          properties:
+            vehicle_id:
+              type: string
+              
+            license_plate_no:
+              type: string
+            vehicle_reg_no:
+              type: string
+            vehicle_status:
+              type: string
+        latest_ping:
+          $ref: '#/components/schemas/LocationPing'
+          nullable: true
+
+    LocationPing:
+      type: object
+      properties:
+        ping_id:
+          type: string
+          
+        device_id:
+          type: string
+          
+        latitude:
+          type: number
+          format: double
+          example: 6.9271
+        longitude:
+          type: number
+          format: double
+          example: 79.8612
+        ping_timestamp:
+          type: string
+          format: date-time
+          example: "2025-04-26T10:30:00Z"
+        speed_kmh:
+          type: number
+          format: double
+          nullable: true
+          example: 32.5
+        device_battery:
+          type: integer
+          nullable: true
+          minimum: 0
+          maximum: 100
+          example: 74
+
+    LastLocationResponse:
+      type: object
+      properties:
+        vehicle_id:
+          type: string
+          
+        license_plate_no:
+          type: string
+        device_id:
+          type: string
+          
+        last_location:
+          $ref: '#/components/schemas/LocationPing'
+
+    AssignmentRecord:
+      type: object
+      properties:
+        assignment_id:
+          type: string
+          
+        vehicle_id:
+          type: string
+          
+        driver_id:
+          type: string
+          
+        assigned_time:
+          type: string
+          format: date-time
+        unassigned_time:
+          type: string
+          format: date-time
+          nullable: true
+        is_current_driver:
+          type: boolean
+        is_driver_owner:
+          type: boolean
+
+    TokenPair:
+      type: object
+      properties:
+        access_token:
+          type: string
+          description: JWT access token valid for 15 minutes
+        refresh_token:
+          type: string
+          description: Refresh token valid for 7 days
+
+# ─────────────────────────────────────────────────────────────
+# GLOBAL SECURITY — applied to all paths unless overridden
+# ─────────────────────────────────────────────────────────────
+security:
+  - BearerAuth: []
+
+# ─────────────────────────────────────────────────────────────
+# PATHS
+# ─────────────────────────────────────────────────────────────
+paths:
+
+  # ============================================================
+  # AUTH
+  # ============================================================
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Login
+      description: >
+        Authenticate with username and password.
+        Returns a JWT access token (15 min) and a refresh token (7 days).
+        No Bearer token required for this endpoint.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, password]
+              properties:
+                username:
+                  type: string
+                  example: officer.silva
+                password:
+                  type: string
+                  format: password
+                  example: SecurePass123!
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/TokenPair'
+        '400':
+          description: Missing username or password
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Too many login attempts (auth rate limiter — 20 per 15 min)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/refresh:
+    post:
+      tags: [Auth]
+      summary: Refresh access token
+      description: >
+        Exchange a valid refresh token for a new access token.
+        Token rotation is applied — the old refresh token is invalidated
+        and a new one is issued on every call.
+        No Bearer token required for this endpoint.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refresh_token]
+              properties:
+                refresh_token:
+                  type: string
+                  example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+      responses:
+        '200':
+          description: New token pair issued
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/TokenPair'
+        '400':
+          description: Refresh token missing from request body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Refresh token invalid or expired
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: Logout
+      description: >
+        Invalidates the current refresh token in the database.
+        The access token will still be valid until its 15-minute expiry
+        (stateless by design) but the refresh token cannot be used again.
+        Requires a valid Bearer token.
+      responses:
+        '200':
+          description: Logged out successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '401':
+          description: Missing or invalid access token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ============================================================
+  # PROVINCES
+  # ============================================================
+
+  /provinces:
+    get:
+      tags: [Provinces]
+      summary: List all provinces
+      description: >
+        Returns all 9 Sri Lanka provinces.
+        NATIONAL users see all. PROVINCIAL / DISTRICT / STATION users
+        see only their own province.
+      responses:
+        '200':
+          description: Provinces retrieved
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/CollectionResponse'
+                  - type: object
+                    properties:
+                      collection:
+                        properties:
+                          items:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/Province'
+        '401':
+          description: Unauthorised
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Missing province:view permission
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /provinces/{provinceId}:
+    get:
+      tags: [Provinces]
+      summary: Get a province by ID
+      parameters:
+        - name: provinceId
+          in: path
+          required: true
+          schema:
+            type: string
+            
+      responses:
+        '200':
+          description: Province found
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Province'
+        '403':
+          description: Province is outside your jurisdiction
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Province not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /provinces/{provinceId}/districts:
+    get:
+      tags: [Provinces]
+      summary: List districts within a province
+      parameters:
+        - name: provinceId
+          in: path
+          required: true
+          schema:
+            type: string
+            
+      responses:
+        '200':
+          description: Districts in province retrieved
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/CollectionResponse'
+                  - type: object
+                    properties:
+                      collection:
+                        properties:
+                          items:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/District'
+        '404':
+          description: Province not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ============================================================
+  # DISTRICTS
+  # ============================================================
+
+  /districts:
+    get:
+      tags: [Districts]
+      summary: List all districts
+      description: Returns all 25 districts, jurisdiction-scoped.
+      responses:
+        '200':
+          description: Districts retrieved
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/CollectionResponse'
+                  - type: object
+                    properties:
+                      collection:
+                        properties:
+                          items:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/District'
+        '401':
+          description: Unauthorised
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /districts/{districtId}:
+    get:
+      tags: [Districts]
+      summary: Get a district by ID
+      parameters:
+        - name: districtId
+          in: path
+          required: true
+          schema:
+            type: string
+            
+      responses:
+        '200':
+          description: District found
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/District'
+        '404':
+          description: District not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /districts/{districtId}/offices:
+    get:
+      tags: [Districts]
+      summary: List offices within a district
+      description: Requires both district:view and office:view permissions.
+      parameters:
+        - name: districtId
+          in: path
+          required: true
+          schema:
+            type: string
+            
+      responses:
+        '200':
+          description: Offices in district retrieved
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/CollectionResponse'
+                  - type: object
+                    properties:
+                      collection:
+                        properties:
+                          items:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/Office'
+        '404':
+          description: District not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ============================================================
+  # ROLES
+  # ============================================================
+
+  /roles:
+    get:
+      tags: [Roles]
+      summary: List all roles
+      description: Returns all 8 system roles with their permission arrays. Requires province:view.
+      responses:
+        '200':
+          description: Roles retrieved
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/CollectionResponse'
+                  - type: object
+                    properties:
+                      collection:
+                        properties:
+                          items:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/Role'
+        '401':
+          description: Unauthorised
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /roles/{roleId}:
+    get:
+      tags: [Roles]
+      summary: Get a role by ID
+      parameters:
+        - name: roleId
+          in: path
+          required: true
+          schema:
+            type: string
+            
+      responses:
+        '200':
+          description: Role found
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Role'
+        '404':
+          description: Role not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    put:
+      tags: [Roles]
+      summary: Update a role
+      description: >
+        Update role_description and/or permissions array.
+        Requires audit:view permission — effectively restricted to HQ_SUPER_ADMIN.
+      parameters:
+        - name: roleId
+          in: path
+          required: true
+          schema:
+            type: string
+            
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                role_description:
+                  type: string
+                permissions:
+                  type: array
+                  items:
+                    type: string
+                  example: [vehicle:view, location:view_live]
+      responses:
+        '200':
+          description: Role updated
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Role'
+        '403':
+          description: Missing audit:view permission
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Role not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ============================================================
+  # OFFICES
+  # ============================================================
+
+  /offices:
+    get:
+      tags: [Offices]
+      summary: List all offices
+      description: Jurisdiction-scoped. Supports optional filtering.
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [ACTIVE, CLOSED]
+        - name: office_type
+          in: query
+          schema:
+            type: string
+            enum: [HEADQUARTERS, PROVINCIAL_HQ, DISTRICT_HQ, DIVISIONAL_STATION]
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: Offices retrieved
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/CollectionResponse'
+                  - type: object
+                    properties:
+                      collection:
+                        properties:
+                          items:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/Office'
+        '401':
+          description: Unauthorised
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      tags: [Offices]
+      summary: Create a new office
+      description: Requires office:create permission.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [office_code, office_name, office_type, jurisdiction_type]
+              properties:
+                office_code:
+                  type: string
+                  example: SLP-WP-001
+                office_name:
+                  type: string
+                  example: Colombo District Police HQ
+                office_type:
+                  type: string
+                  enum: [HEADQUARTERS, PROVINCIAL_HQ, DISTRICT_HQ, DIVISIONAL_STATION]
+                jurisdiction_type:
+                  type: string
+                  enum: [NATIONAL, PROVINCIAL, DISTRICT]
+                jurisdiction_ref_id:
+                  type: string
+                  
+                  nullable: true
+                  description: province_id or district_id depending on jurisdiction_type
+                office_address:
+                  type: string
+                  nullable: true
+                office_contact:
+                  type: string
+                  nullable: true
+      responses:
+        '201':
+          description: Office created
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Office'
+        '400':
+          description: Validation error — missing required fields
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: office_code already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /offices/{officeId}:
+    get:
+      tags: [Offices]
+      summary: Get an office by ID
+      parameters:
+        - name: officeId
+          in: path
+          required: true
+          schema:
+            type: string
+            
+      responses:
+        '200':
+          description: Office found
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Office'
+        '403':
+          description: Office outside your jurisdiction
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Office not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    put:
+      tags: [Offices]
+      summary: Update an office
+      description: >
+        Only office_name, office_address, and office_contact are editable.
+        office_type and jurisdiction fields are immutable after creation.
+      parameters:
+        - name: officeId
+          in: path
+          required: true
+          schema:
+            type: string
+            
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                office_name:
+                  type: string
+                office_address:
+                  type: string
+                office_contact:
+                  type: string
+      responses:
+        '200':
+          description: Office updated
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Office'
+        '404':
+          description: Office not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags: [Offices]
+      summary: Close an office (soft delete)
+      description: Transitions status to CLOSED. Does not remove the row.
+      parameters:
+        - name: officeId
+          in: path
+          required: true
+          schema:
+            type: string
+            
+      responses:
+        '200':
+          description: Office closed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '409':
+          description: Office already closed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /offices/{officeId}/users:
+    get:
+      tags: [Offices]
+      summary: List users assigned to an office
+      description: Requires user:view permission.
+      parameters:
+        - name: officeId
+          in: path
+          required: true
+          schema:
+            type: string
+            
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: Users in office retrieved
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/CollectionResponse'
+                  - type: object
+                    properties:
+                      collection:
+                        properties:
+                          items:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/User'
+        '404':
+          description: Office not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ============================================================
+  # USERS
+  # ============================================================
+
+  /users:
+    get:
+      tags: [Users]
+      summary: List all users
+      description: Jurisdiction-scoped. Requires user:view.
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: Users retrieved
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/CollectionResponse'
+                  - type: object
+                    properties:
+                      collection:
+                        properties:
+                          items:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/User'
+        '401':
+          description: Unauthorised
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      tags: [Users]
+      summary: Create a new user
+      description: Requires user:create. Jurisdiction-scoped — cannot create users outside your scope.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, fullname, email_address, password, badge_id, office_id, role_id]
+              properties:
+                username:
+                  type: string
+                  example: officer.perera
+                fullname:
+                  type: string
+                  example: Pradeep Kamal Perera
+                email_address:
+                  type: string
+                  format: email
+                  example: p.perera@police.gov.lk
+                password:
+                  type: string
+                  format: password
+                  example: SecurePass123!
+                badge_id:
+                  type: string
+                  example: SLP-67890
+                contact_no:
+                  type: string
+                  nullable: true
+                office_id:
+                  type: string
+                  
+                role_id:
+                  type: string
+                  
+      responses:
+        '201':
+          description: User created
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/User'
+        '409':
+          description: username, email_address, or badge_id already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /users/{badgeId}:
+    get:
+      tags: [Users]
+      summary: Get a user by ID
+      parameters:
+        - name: badgeId
+          in: path
+          required: true
+          schema:
+            type: string
+            
+      responses:
+        '200':
+          description: User found
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/User'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    put:
+      tags: [Users]
+      summary: Update a user
+      description: Requires user:edit. username, badge_id are immutable.
+      parameters:
+        - name: badgeId
+          in: path
+          required: true
+          schema:
+            type: string
+            
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                fullname:
+                  type: string
+                email_address:
+                  type: string
+                  format: email
+                contact_no:
+                  type: string
+                office_id:
+                  type: string
+                  
+                role_id:
+                  type: string
+                  
+      responses:
+        '200':
+          description: User updated
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/User'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags: [Users]
+      summary: Deactivate a user (soft delete)
+      description: Transitions status to INACTIVE. Requires user:deactivate.
+      parameters:
+        - name: badgeId
+          in: path
+          required: true
+          schema:
+            type: string
+            
+      responses:
+        '200':
+          description: User deactivated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '409':
+          description: User is already inactive
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /users/{badgeId}/reset-password:
+    post:
+      tags: [Users]
+      summary: Admin password reset for a user
+      description: Requires user:edit. Sets a new bcrypt-hashed password for the user.
+      parameters:
+        - name: badgeId
+          in: path
+          required: true
+          schema:
+            type: string
+            
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [new_password]
+              properties:
+                new_password:
+                  type: string
+                  format: password
+                  example: NewSecurePass456!
+      responses:
+        '200':
+          description: Password reset successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ============================================================
+  # OWNERS
+  # ============================================================
+
+  /owners:
+    get:
+      tags: [Owners]
+      summary: List all owners
+      description: Jurisdiction-scoped. Supports search and status filters.
+      parameters:
+        - name: search
+          in: query
+          description: Partial match on owner_fullname (case-insensitive)
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [ACTIVE, INACTIVE, FLAGGED]
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: Owners retrieved
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/CollectionResponse'
+                  - type: object
+                    properties:
+                      collection:
+                        properties:
+                          items:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/Owner'
+        '401':
+          description: Unauthorised
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      tags: [Owners]
+      summary: Register a new owner
+      description: Requires owner:create. owner_identity_no is encrypted at rest.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [owner_fullname, owner_identity_no, owner_id_type, owner_gender]
+              properties:
+                owner_fullname:
+                  type: string
+                  example: Nimal Perera
+                owner_identity_no:
+                  type: string
+                  example: 901234567V
+                owner_id_type:
+                  type: string
+                  enum: [NIC, PASSPORT, BUSINESS]
+                owner_gender:
+                  type: string
+                  enum: [MALE, FEMALE, OTHER]
+                owner_contact:
+                  type: string
+                  nullable: true
+                owner_address:
+                  type: string
+                  nullable: true
+      responses:
+        '201':
+          description: Owner registered
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Owner'
+        '409':
+          description: owner_identity_no already registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /owners/{ownerIdentityNo}:
+    get:
+      tags: [Owners]
+      summary: Get an owner by ID
+      description: Returns decrypted PII fields. Jurisdiction-scoped.
+      parameters:
+        - name: ownerIdentityNo
+          in: path
+          required: true
+          schema:
+            type: string
+            
+      responses:
+        '200':
+          description: Owner found
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Owner'
+        '404':
+          description: Owner not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    put:
+      tags: [Owners]
+      summary: Update an owner
+      description: owner_identity_no and owner_id_type are immutable. Requires owner:edit.
+      parameters:
+        - name: ownerIdentityNo
+          in: path
+          required: true
+          schema:
+            type: string
+            
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                owner_fullname:
+                  type: string
+                owner_gender:
+                  type: string
+                  enum: [MALE, FEMALE, OTHER]
+                owner_contact:
+                  type: string
+                owner_address:
+                  type: string
+      responses:
+        '200':
+          description: Owner updated
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Owner'
+        '404':
+          description: Owner not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags: [Owners]
+      summary: Deactivate an owner (soft delete)
+      description: >
+        Transitions status to INACTIVE. Requires owner:delete.
+        Blocked if the owner has any vehicles that are not DEREGISTERED.
+      parameters:
+        - name: ownerIdentityNo
+          in: path
+          required: true
+          schema:
+            type: string
+            
+      responses:
+        '200':
+          description: Owner deactivated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '409':
+          description: Owner still has active vehicles
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /owners/{ownerIdentityNo}/vehicles:
+    get:
+      tags: [Owners]
+      summary: List vehicles registered under an owner
+      description: Requires vehicle:view permission.
+      parameters:
+        - name: ownerIdentityNo
+          in: path
+          required: true
+          schema:
+            type: string
+            
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: Owner vehicles retrieved
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/CollectionResponse'
+                  - type: object
+                    properties:
+                      collection:
+                        properties:
+                          items:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/Vehicle'
+        '404':
+          description: Owner not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ============================================================
+  # VEHICLES
+  # ============================================================
+
+  /vehicles:
+    get:
+      tags: [Vehicles]
+      summary: List all vehicles
+      description: Jurisdiction-scoped. Supports multiple query filters.
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [ACTIVE, SUSPENDED, FLAGGED, DEREGISTERED]
+        - name: district_id
+          in: query
+          schema:
+            type: string
+            
+        - name: fuel_type
+          in: query
+          schema:
+            type: string
+            enum: [PETROL, CNG, ELECTRIC]
+        - name: make_of_vehicle
+          in: query
+          description: Partial match (case-insensitive)
+          schema:
+            type: string
+        - name: owner_id
+          in: query
+          schema:
+            type: string
+            
+        - name: is_diplomatic
+          in: query
+          schema:
+            type: boolean
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: Vehicles retrieved
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/CollectionResponse'
+                  - type: object
+                    properties:
+                      collection:
+                        properties:
+                          items:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/Vehicle'
+        '401':
+          description: Unauthorised
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      tags: [Vehicles]
+      summary: Register a new vehicle
+      description: >
+        Requires vehicle:create. Jurisdiction-scoped — officer can only register
+        vehicles in their district. device_id is always null at creation —
+        use POST /assignments/assign-device after registration.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - owner_id
+                - district_id
+                - license_plate_no
+                - vehicle_reg_no
+                - chassis_number
+                - engine_number
+                - make_of_vehicle
+                - model_of_vehicle
+                - manufacture_year
+                - fuel_type
+                - vehicle_reg_date
+              properties:
+                owner_id:
+                  type: string
+                  
+                district_id:
+                  type: string
+                  
+                license_plate_no:
+                  type: string
+                  example: WP CAB-1234
+                vehicle_reg_no:
+                  type: string
+                  example: VR-2023-001234
+                chassis_number:
+                  type: string
+                  example: MA3FJEB1S00123456
+                engine_number:
+                  type: string
+                  example: K10B1234567
+                make_of_vehicle:
+                  type: string
+                  example: Bajaj
+                model_of_vehicle:
+                  type: string
+                  example: RE 4S
+                manufacture_year:
+                  type: integer
+                  example: 2021
+                vehicle_colour:
+                  type: string
+                  nullable: true
+                  example: Yellow
+                fuel_type:
+                  type: string
+                  enum: [PETROL, CNG, ELECTRIC]
+                is_diplomatic:
+                  type: boolean
+                  default: false
+                vehicle_reg_date:
+                  type: string
+                  format: date
+                  example: "2021-06-15"
+      responses:
+        '201':
+          description: Vehicle registered
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Vehicle'
+        '409':
+          description: license_plate_no, vehicle_reg_no, chassis_number, or engine_number already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /vehicles/{licensePlateNo}:
+    get:
+      tags: [Vehicles]
+      summary: Get a vehicle by ID
+      parameters:
+        - name: licensePlateNo
+          in: path
+          required: true
+          schema:
+            type: string
+            
+      responses:
+        '200':
+          description: Vehicle found
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Vehicle'
+        '403':
+          description: Vehicle outside your jurisdiction
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Vehicle not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    put:
+      tags: [Vehicles]
+      summary: Update a vehicle
+      description: >
+        Requires vehicle:edit. Immutable fields: license_plate_no, vehicle_reg_no,
+        chassis_number, engine_number, status, device_id.
+        Use POST /vehicles/{licensePlateNo}/change-status for status changes.
+        Use POST /assignments/assign-device for device changes.
+      parameters:
+        - name: licensePlateNo
+          in: path
+          required: true
+          schema:
+            type: string
+            
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                make_of_vehicle:
+                  type: string
+                model_of_vehicle:
+                  type: string
+                vehicle_colour:
+                  type: string
+                fuel_type:
+                  type: string
+                  enum: [PETROL, CNG, ELECTRIC]
+                is_diplomatic:
+                  type: boolean
+                vehicle_reg_date:
+                  type: string
+                  format: date
+                owner_id:
+                  type: string
+                  
+                district_id:
+                  type: string
+                  
+      responses:
+        '200':
+          description: Vehicle updated
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Vehicle'
+        '400':
+          description: Attempted to update an immutable field
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Vehicle not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags: [Vehicles]
+      summary: Deregister a vehicle (soft delete)
+      description: >
+        Transitions status to DEREGISTERED. Requires vehicle:delete.
+        Blocked if vehicle has an active driver assignment —
+        use POST /assignments/unassign-driver first.
+      parameters:
+        - name: licensePlateNo
+          in: path
+          required: true
+          schema:
+            type: string
+            
+      responses:
+        '200':
+          description: Vehicle deregistered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '409':
+          description: Vehicle has an active driver assignment
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /vehicles/{licensePlateNo}/profile:
+    get:
+      tags: [Vehicles]
+      summary: Get full vehicle profile
+      description: >
+        Composite response — vehicle + owner (with decrypted PII)
+        + current driver (with decrypted PII, if assigned)
+        + device (if assigned). One call replaces multiple lookups.
+      parameters:
+        - name: licensePlateNo
+          in: path
+          required: true
+          schema:
+            type: string
+            
+      responses:
+        '200':
+          description: Full vehicle profile retrieved
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/VehicleFullProfile'
+        '404':
+          description: Vehicle not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /vehicles/{licensePlateNo}/drivers:
+    get:
+      tags: [Vehicles]
+      summary: Get driver assignment history for a vehicle
+      description: >
+        Paginated history of all driver assignments — past and present.
+        Requires assignment:view. PII fields are decrypted in the response.
+      parameters:
+        - name: licensePlateNo
+          in: path
+          required: true
+          schema:
+            type: string
+            
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: Driver assignment history retrieved
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/CollectionResponse'
+                  - type: object
+                    properties:
+                      collection:
+                        properties:
+                          items:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/DriverAssignment'
+        '404':
+          description: Vehicle not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /vehicles/{licensePlateNo}/assignments/{assignmentId}:
+    get:
+      tags: [Vehicles]
+      summary: Get a specific driver assignment record
+      description: Requires assignment:view.
+      parameters:
+        - name: licensePlateNo
+          in: path
+          required: true
+          schema:
+            type: string
+            
+        - name: assignmentId
+          in: path
+          required: true
+          schema:
+            type: string
+            
+      responses:
+        '200':
+          description: Assignment found
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/DriverAssignment'
+        '404':
+          description: Vehicle or assignment not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /vehicles/{licensePlateNo}/location-pings:
+    get:
+      tags: [Vehicles]
+      summary: Get location history for a vehicle
+      description: >
+        Paginated GPS movement history. Pings are fetched via the
+        device currently assigned to the vehicle.
+        Returns 404 if the vehicle has no tracking device assigned.
+        Supports optional time-window filtering. Core brief deliverable.
+      parameters:
+        - name: licensePlateNo
+          in: path
+          required: true
+          schema:
+            type: string
+            
+        - name: start_time
+          in: query
+          description: ISO 8601 datetime — lower bound of time window
+          schema:
+            type: string
+            format: date-time
+            example: "2025-04-19T00:00:00Z"
+        - name: end_time
+          in: query
+          description: ISO 8601 datetime — upper bound of time window
+          schema:
+            type: string
+            format: date-time
+            example: "2025-04-26T23:59:59Z"
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: Location history retrieved (newest ping first)
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/CollectionResponse'
+                  - type: object
+                    properties:
+                      collection:
+                        properties:
+                          items:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/LocationPing'
+        '404':
+          description: Vehicle not found, or vehicle has no tracking device assigned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /vehicles/{licensePlateNo}/last-location:
+    get:
+      tags: [Vehicles]
+      summary: Get the last known location of a vehicle
+      description: >
+        Returns only the single most recent GPS ping for this vehicle —
+        the live view. Requires location:view_live.
+        Returns 404 if the vehicle has no device or has never sent a ping.
+        Core brief deliverable.
+      parameters:
+        - name: licensePlateNo
+          in: path
+          required: true
+          schema:
+            type: string
+            
+      responses:
+        '200':
+          description: Last known location retrieved
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/LastLocationResponse'
+        '404':
+          description: Vehicle not found, no device assigned, or no pings recorded yet
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /vehicles/{licensePlateNo}/change-status:
+    post:
+      tags: [Vehicles]
+      summary: Change vehicle status
+      description: >
+        Transitions vehicle to ACTIVE, SUSPENDED, or FLAGGED.
+        DEREGISTERED is handled by DELETE /vehicles/{licensePlateNo}.
+        Requires vehicle:change_status.
+      parameters:
+        - name: licensePlateNo
+          in: path
+          required: true
+          schema:
+            type: string
+            
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  type: string
+                  enum: [ACTIVE, SUSPENDED, FLAGGED]
+      responses:
+        '200':
+          description: Vehicle status changed
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Vehicle'
+        '409':
+          description: Vehicle already has that status, or is DEREGISTERED
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ============================================================
+  # DRIVERS
+  # ============================================================
+
+  /drivers:
+    get:
+      tags: [Drivers]
+      summary: List all drivers
+      description: Jurisdiction-scoped. Supports search and status filters.
+      parameters:
+        - name: search
+          in: query
+          description: Partial match on driver_fullname (case-insensitive)
+          schema:
+            type: string
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [ACTIVE, SUSPENDED, BLACKLISTED]
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: Drivers retrieved
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/CollectionResponse'
+                  - type: object
+                    properties:
+                      collection:
+                        properties:
+                          items:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/Driver'
+        '401':
+          description: Unauthorised
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      tags: [Drivers]
+      summary: Register a new driver
+      description: Requires driver:create. PII fields are encrypted at rest.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - driver_fullname
+                - driver_identity_no
+                - driver_id_type
+                - date_of_birth
+                - driver_gender
+                - driver_license_no
+                - license_expiry_date
+              properties:
+                driver_fullname:
+                  type: string
+                  example: Sunil Rathnayake
+                driver_identity_no:
+                  type: string
+                  example: 851234567V
+                driver_id_type:
+                  type: string
+                  enum: [NIC, PASSPORT]
+                date_of_birth:
+                  type: string
+                  format: date
+                  example: "1985-04-12"
+                driver_gender:
+                  type: string
+                  enum: [MALE, FEMALE, OTHER]
+                driver_contact_no:
+                  type: string
+                  nullable: true
+                address:
+                  type: string
+                  nullable: true
+                driver_license_no:
+                  type: string
+                  example: B1234567
+                license_expiry_date:
+                  type: string
+                  format: date
+                  example: "2027-03-31"
+      responses:
+        '201':
+          description: Driver registered
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Driver'
+        '400':
+          description: Licence already expired, or validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: driver_identity_no or driver_license_no already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /drivers/{driverLicenseNo}:
+    get:
+      tags: [Drivers]
+      summary: Get a driver by ID
+      description: Returns decrypted PII. Jurisdiction-scoped.
+      parameters:
+        - name: driverLicenseNo
+          in: path
+          required: true
+          schema:
+            type: string
+            
+      responses:
+        '200':
+          description: Driver found
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Driver'
+        '404':
+          description: Driver not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    put:
+      tags: [Drivers]
+      summary: Update a driver
+      description: Requires driver:edit. driver_identity_no, driver_id_type, driver_license_no are immutable.
+      parameters:
+        - name: driverLicenseNo
+          in: path
+          required: true
+          schema:
+            type: string
+            
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                driver_fullname:
+                  type: string
+                driver_contact_no:
+                  type: string
+                address:
+                  type: string
+                license_expiry_date:
+                  type: string
+                  format: date
+      responses:
+        '200':
+          description: Driver updated
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Driver'
+        '404':
+          description: Driver not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags: [Drivers]
+      summary: Suspend a driver (soft delete)
+      description: >
+        Transitions status to SUSPENDED. Requires driver:delete.
+        Blocked if driver has an active vehicle assignment.
+      parameters:
+        - name: driverLicenseNo
+          in: path
+          required: true
+          schema:
+            type: string
+            
+      responses:
+        '200':
+          description: Driver suspended
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '409':
+          description: Driver has an active vehicle assignment or is already suspended
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /drivers/{driverLicenseNo}/change-status:
+    post:
+      tags: [Drivers]
+      summary: Change driver status
+      description: Transitions driver to ACTIVE, SUSPENDED, or BLACKLISTED. Requires driver:change_status.
+      parameters:
+        - name: driverLicenseNo
+          in: path
+          required: true
+          schema:
+            type: string
+            
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  type: string
+                  enum: [ACTIVE, SUSPENDED, BLACKLISTED]
+      responses:
+        '200':
+          description: Driver status changed
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/Driver'
+        '409':
+          description: Driver already has that status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ============================================================
+  # TRACKING DEVICES
+  # ============================================================
+
+  /tracking-devices:
+    get:
+      tags: [Tracking Devices]
+      summary: List all tracking devices
+      description: >
+        Jurisdiction-scoped. Devices not assigned to any vehicle
+        are only visible to NATIONAL users.
+        Supports search and status filters.
+      parameters:
+        - name: search
+          in: query
+          description: Partial match on device_serial_no
+          schema:
+            type: string
+        - name: device_status
+          in: query
+          schema:
+            type: string
+            enum: [ACTIVE, INACTIVE, FAULTY, DECOMMISSIONED]
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: Tracking devices retrieved
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/CollectionResponse'
+                  - type: object
+                    properties:
+                      collection:
+                        properties:
+                          items:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/TrackingDevice'
+        '401':
+          description: Unauthorised
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      tags: [Tracking Devices]
+      summary: Register a new tracking device
+      description: Requires device:create.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [device_serial_no]
+              properties:
+                device_serial_no:
+                  type: string
+                  example: SLPGPS000201
+      responses:
+        '201':
+          description: Tracking device registered
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/TrackingDevice'
+        '409':
+          description: device_serial_no already registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /tracking-devices/{deviceSerialNo}:
+    get:
+      tags: [Tracking Devices]
+      summary: Get a tracking device by ID
+      parameters:
+        - name: deviceSerialNo
+          in: path
+          required: true
+          schema:
+            type: string
+            
+      responses:
+        '200':
+          description: Device found
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/TrackingDevice'
+        '404':
+          description: Device not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    put:
+      tags: [Tracking Devices]
+      summary: Update a tracking device
+      description: Only device_serial_no is editable. Blocked if status is DECOMMISSIONED.
+      parameters:
+        - name: deviceSerialNo
+          in: path
+          required: true
+          schema:
+            type: string
+            
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                device_serial_no:
+                  type: string
+      responses:
+        '200':
+          description: Device updated
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/TrackingDevice'
+        '409':
+          description: Device is decommissioned or serial no already in use
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    delete:
+      tags: [Tracking Devices]
+      summary: Decommission a tracking device (soft delete)
+      description: >
+        Transitions device_status to DECOMMISSIONED. Requires device:delete.
+        Blocked if the device is currently assigned to a vehicle —
+        use POST /assignments/assign-device to unassign first.
+      parameters:
+        - name: deviceSerialNo
+          in: path
+          required: true
+          schema:
+            type: string
+            
+      responses:
+        '200':
+          description: Device decommissioned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '409':
+          description: Device is currently assigned to a vehicle
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /tracking-devices/{deviceSerialNo}/status:
+    get:
+      tags: [Tracking Devices]
+      summary: Get device status composite
+      description: >
+        Returns device details + the vehicle it is assigned to + its
+        most recent GPS ping. Useful for device health monitoring dashboards.
+      parameters:
+        - name: deviceSerialNo
+          in: path
+          required: true
+          schema:
+            type: string
+            
+      responses:
+        '200':
+          description: Device status composite retrieved
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/TrackingDeviceStatusComposite'
+        '404':
+          description: Device not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /tracking-devices/{deviceSerialNo}/location-pings:
+    get:
+      tags: [Tracking Devices]
+      summary: Get ping history for a tracking device
+      description: >
+        Full ping history for a specific device.
+        Supports optional start_time / end_time time-window filtering.
+        Requires location:view_history.
+      parameters:
+        - name: deviceSerialNo
+          in: path
+          required: true
+          schema:
+            type: string
+            
+        - name: start_time
+          in: query
+          schema:
+            type: string
+            format: date-time
+            example: "2025-04-19T00:00:00Z"
+        - name: end_time
+          in: query
+          schema:
+            type: string
+            format: date-time
+            example: "2025-04-26T23:59:59Z"
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: Ping history retrieved (newest first)
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/CollectionResponse'
+                  - type: object
+                    properties:
+                      collection:
+                        properties:
+                          items:
+                            type: array
+                            items:
+                              $ref: '#/components/schemas/LocationPing'
+        '404':
+          description: Device not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /tracking-devices/{deviceSerialNo}/change-status:
+    post:
+      tags: [Tracking Devices]
+      summary: Change device status
+      description: >
+        Transitions device to ACTIVE, INACTIVE, FAULTY, or DECOMMISSIONED.
+        Requires device:assign_to_vehicle.
+      parameters:
+        - name: deviceSerialNo
+          in: path
+          required: true
+          schema:
+            type: string
+            
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [device_status]
+              properties:
+                device_status:
+                  type: string
+                  enum: [ACTIVE, INACTIVE, FAULTY, DECOMMISSIONED]
+      responses:
+        '200':
+          description: Device status changed
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/TrackingDevice'
+        '409':
+          description: Device already has that status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ============================================================
+  # LOCATION PINGS
+  # ============================================================
+
+  /location-pings:
+    post:
+      tags: [Location Pings]
+      summary: Submit a GPS ping from a tracking device
+      description: >
+        Submits a new GPS coordinate ping from a tracking device.
+        The device must exist, must not be DECOMMISSIONED, and must be
+        assigned to a vehicle. The requesting user must have jurisdiction
+        over the district of the assigned vehicle.
+        Requires location:view_history permission.
+        ping_timestamp defaults to server time if not provided —
+        useful for devices that support offline-sync after connectivity gaps.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [device_id, latitude, longitude]
+              properties:
+                device_id:
+                  type: string
+                  
+                  description: The UUID of the tracking device submitting the ping
+                  example: a1345168-cf7b-5624-8889-a447df42141b
+                latitude:
+                  type: number
+                  format: double
+                  minimum: -90
+                  maximum: 90
+                  example: 6.9271
+                longitude:
+                  type: number
+                  format: double
+                  minimum: -180
+                  maximum: 180
+                  example: 79.8612
+                ping_timestamp:
+                  type: string
+                  format: date-time
+                  description: Device-side timestamp. Defaults to server time if omitted.
+                  example: "2025-04-26T10:30:00Z"
+                speed_kmh:
+                  type: number
+                  format: double
+                  nullable: true
+                  example: 32.5
+                device_battery:
+                  type: integer
+                  nullable: true
+                  minimum: 0
+                  maximum: 100
+                  example: 74
+      responses:
+        '201':
+          description: Ping recorded successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/LocationPing'
+        '404':
+          description: Tracking device not found or decommissioned
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Device is not currently assigned to any vehicle
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  # ============================================================
+  # ASSIGNMENTS (Controller Resources)
+  # ============================================================
+
+  /assignments/assign-driver:
+    post:
+      tags: [Assignments]
+      summary: Assign a driver to a vehicle
+      description: >
+        Controller resource (verb, not noun) — per WSO2 REST Design Guidelines section 4.4.
+        Enforces atomically:
+        1. Vehicle must exist and not be DEREGISTERED.
+        2. Driver must exist and be ACTIVE.
+        3. Vehicle must not already have an active driver (enforced at service layer
+           and also by a partial unique index on vehicle_driver_assignments).
+        4. Driver must not already be assigned to another vehicle.
+        Requires assignment:create permission.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [vehicle_id, driver_id]
+              properties:
+                vehicle_id:
+                  type: string
+                  
+                driver_id:
+                  type: string
+                  
+                is_driver_owner:
+                  type: boolean
+                  default: false
+                  description: Set to true if the driver is also the registered owner of this vehicle
+      responses:
+        '201':
+          description: Driver assigned successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AssignmentRecord'
+        '404':
+          description: Vehicle not found, or driver not found / not active
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Vehicle already has an active driver, or driver is already assigned elsewhere
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /assignments/unassign-driver:
+    post:
+      tags: [Assignments]
+      summary: Unassign the current driver from a vehicle
+      description: >
+        Controller resource. Closes the active assignment by recording
+        unassigned_time and setting is_current_driver = false.
+        The assignment record is never deleted — it forms the permanent audit trail.
+        Requires assignment:close permission.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [vehicle_id]
+              properties:
+                vehicle_id:
+                  type: string
+                  
+      responses:
+        '200':
+          description: Driver unassigned successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        $ref: '#/components/schemas/AssignmentRecord'
+        '404':
+          description: Vehicle not found, or vehicle has no active driver assignment to close
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /assignments/assign-device:
+    post:
+      tags: [Assignments]
+      summary: Assign a tracking device to a vehicle
+      description: >
+        Controller resource. Links a tracking device to a vehicle by
+        setting vehicles.device_id. Enforces atomically:
+        1. Vehicle must exist and not be DEREGISTERED.
+        2. Device must exist and not be DECOMMISSIONED.
+        3. Vehicle must not already have a device (vehicles.device_id must be NULL).
+        4. Device must not already be assigned to another vehicle.
+        Requires device:assign_to_vehicle permission.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [vehicle_id, device_id]
+              properties:
+                vehicle_id:
+                  type: string
+                  
+                device_id:
+                  type: string
+                  
+      responses:
+        '201':
+          description: Device assigned successfully. Returns the updated vehicle record.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessResponse'
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          vehicle_id:
+                            type: string
+                            
+                          license_plate_no:
+                            type: string
+                          vehicle_reg_no:
+                            type: string
+                          status:
+                            type: string
+                          device_id:
+                            type: string
+                            
+                          district_id:
+                            type: string
+                            
+        '404':
+          description: Vehicle or device not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Vehicle already has a device, or device is already assigned to another vehicle
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'

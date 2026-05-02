@@ -65,7 +65,35 @@ export async function getUserById(userId) {
     return db('users')
         .join('roles', 'users.role_id', 'roles.role_id')
         .join('offices', 'users.office_id', 'offices.office_id')
-        .where('users.user_id', userId)
+        .where('users.badge_id', userId)
+        .select(
+            'users.user_id',
+            'users.username',
+            'users.fullname',
+            'users.email_address',
+            'users.badge_id',
+            'users.contact_no',
+            'users.status',
+            'users.last_login_time',
+            'users.created_time',
+            'users.updated_time',
+            'roles.role_id',
+            'roles.role_name',
+            'roles.permissions',
+            'roles.user_management_scope',
+            'offices.office_id',
+            'offices.office_name',
+            'offices.jurisdiction_type',
+            'offices.jurisdiction_ref_id',
+        )
+        .first();
+}
+
+export async function findUserByBadgeId(badgeId) {
+    return db('users')
+        .join('roles', 'users.role_id', 'roles.role_id')
+        .join('offices', 'users.office_id', 'offices.office_id')
+        .where('users.badge_id', badgeId)
         .select(
             'users.user_id',
             'users.username',
@@ -122,7 +150,7 @@ export async function createUser(newUserData) {
 
 export async function updateUser(userId, fieldsToUpdate) {
     const [updatedUser] = await db('users')
-        .where({ user_id: userId })
+        .where({ badge_id: userId })
         .update({ ...fieldsToUpdate, updated_time: db.fn.now() })
         .returning([
             'user_id',
@@ -142,7 +170,7 @@ export async function updateUser(userId, fieldsToUpdate) {
 
 export async function deactivateUser(userId) {
     const [deactivatedUser] = await db('users')
-        .where({ user_id: userId })
+        .where({ badge_id: userId })
         .update({ status: 'INACTIVE', updated_time: db.fn.now() })
         .returning([
             'user_id',
@@ -156,6 +184,6 @@ export async function deactivateUser(userId) {
 
 export async function updateUserPassword(userId, newHashedPassword) {
     await db('users')
-        .where({ user_id: userId })
+        .where({ badge_id: userId })
         .update({ password: newHashedPassword, updated_time: db.fn.now() });
 }

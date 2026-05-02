@@ -28,10 +28,16 @@ async function resolveAllowedDistrictIds(requestingUser) {
 
 // checks if a device is accessible to the requesting user
 // devices not assigned to any vehicle are only visible to NATIONAL users
-async function checkDeviceAccess(requestingUser, deviceId) {
+async function checkDeviceAccess(requestingUser, deviceSerialOrId) {
     if (requestingUser.jurisdiction_type === 'NATIONAL') return;
 
-    const assignedVehicle = await trackingDeviceRepository.findVehicleAssignedToDevice(deviceId);
+    // deviceSerialOrId may be a serial number at this point;
+    // findVehicleAssignedToDevice needs the internal device_id (UUID).
+    // We look up the device record to get its UUID first.
+    const deviceRecord = await trackingDeviceRepository.findDeviceById(deviceSerialOrId);
+    const internalDeviceId = deviceRecord ? deviceRecord.device_id : deviceSerialOrId;
+
+    const assignedVehicle = await trackingDeviceRepository.findVehicleAssignedToDevice(internalDeviceId);
 
     if (!assignedVehicle) {
         throw {
@@ -101,7 +107,7 @@ export async function getDeviceById(deviceId, requestingUser) {
     await checkDeviceAccess(requestingUser, deviceId);
 
     // include which vehicle this device is assigned to
-    const assignedVehicle = await trackingDeviceRepository.findVehicleAssignedToDevice(deviceId);
+    const assignedVehicle = await trackingDeviceRepository.findVehicleAssignedToDevice(foundDevice.device_id);
 
     return {
         ...foundDevice,
@@ -192,7 +198,7 @@ export async function decommissionDevice(deviceId, requestingUser) {
     }
 
     // cannot decommission a device that is still assigned to a vehicle
-    const assignedVehicle = await trackingDeviceRepository.findVehicleAssignedToDevice(deviceId);
+    const assignedVehicle = await trackingDeviceRepository.findVehicleAssignedToDevice(existingDevice.device_id);
     if (assignedVehicle) {
         throw {
             statusCode: 409,
@@ -215,8 +221,8 @@ export async function getDeviceStatusComposite(deviceId, requestingUser) {
 
     await checkDeviceAccess(requestingUser, deviceId);
 
-    const assignedVehicle = await trackingDeviceRepository.findVehicleAssignedToDevice(deviceId);
-    const latestPing      = await trackingDeviceRepository.findLatestPingByDeviceId(deviceId);
+    const assignedVehicle = await trackingDeviceRepository.findVehicleAssignedToDevice(foundDevice.device_id);
+    const latestPing      = await trackingDeviceRepository.findLatestPingByDeviceId(foundDevice.device_id);
 
     // calculate how long ago the last ping was received
     let minutesSinceLastPing = null;
@@ -255,7 +261,7 @@ export async function getDeviceLocationPings(deviceId, queryParams, requestingUs
     const endTime   = queryParams.end_time   || null;
 
     const { listOfPings, totalPingCount } = await trackingDeviceRepository.findPingsByDeviceId(
-        deviceId,
+        foundDevice.device_id,
         { limit, offset, startTime, endTime }
     );
 
@@ -300,7 +306,7 @@ export async function changeDeviceStatus(deviceId, requestBody, requestingUser) 
 
     // if setting to DECOMMISSIONED, make sure device is not assigned to a vehicle
     if (newStatus === 'DECOMMISSIONED') {
-        const assignedVehicle = await trackingDeviceRepository.findVehicleAssignedToDevice(deviceId);
+        const assignedVehicle = await trackingDeviceRepository.findVehicleAssignedToDevice(existingDevice.device_id);
         if (assignedVehicle) {
             throw {
                 statusCode: 409,

@@ -88,6 +88,14 @@ export function decryptFields(row, fields) {
   return result;
 }
 
+export function hmac(plaintext) {
+  if (plaintext === null || plaintext === undefined) return null;
+  return crypto
+    .createHmac('sha256', Buffer.from(process.env.ENCRYPTION_KEY, 'hex'))
+    .update(String(plaintext))
+    .digest('hex');
+}
+
 // Fields encrypted per table — export so service layer can reference consistently
 export const ENCRYPTED_FIELDS = {
   owners:  ['owner_identity_no', 'owner_contact', 'owner_address'],

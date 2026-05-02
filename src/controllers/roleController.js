@@ -9,7 +9,7 @@ export async function getAllRoles(req, res) {
     try {
         const roles = await roleService.getAllRoles();
         const collection = buildCollection(
-        '/api/v1/roles',
+        '/tuktrack/v1/roles',
         0,
         roles.length,
         roles.length,

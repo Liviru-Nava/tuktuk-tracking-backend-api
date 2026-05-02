@@ -2,6 +2,8 @@
 
 import { v4 as uuidv4 } from 'uuid';
 import * as vehicleRepository from '../repositories/vehicleRepository.js';
+import * as locationPingRepository from '../repositories/locationPingRepository.js';
+import * as assignmentRepository from '../repositories/assignmentRepository.js';
 import { decrypt } from '../utils/encryption.js';
 import { getPaginationParams, buildCollection } from '../utils/paginationUtils.js';
 
@@ -332,7 +334,7 @@ export async function deregisterVehicle(vehicleId, requestingUser) {
     }
 
     // cannot deregister a vehicle that still has an active driver assignment
-    const numberOfActiveAssignments = await vehicleRepository.countActiveAssignmentsByVehicleId(vehicleId);
+    const numberOfActiveAssignments = await vehicleRepository.countActiveAssignmentsByVehicleId(existingVehicle.vehicle_id);
     if (numberOfActiveAssignments > 0) {
         throw {
             statusCode: 409,
@@ -390,8 +392,8 @@ export async function getVehicleDriverHistory(vehicleId, queryParams, requesting
 
     const { limit, offset } = getPaginationParams(queryParams);
 
-    const { listOfAssignments, totalAssignmentCount } = await vehicleRepository.findDriverAssignmentsByVehicleId(
-        vehicleId,
+    const { listOfAssignments, totalAssignmentCount } = await assignmentRepository.findDriverAssignmentsByVehicleId(
+        existingVehicle.vehicle_id,
         { limit, offset }
     );
 
@@ -430,9 +432,9 @@ export async function getSpecificAssignment(vehicleId, assignmentId, requestingU
 
     await checkVehicleJurisdictionAccess(requestingUser, existingVehicle.district_id);
 
-    const foundAssignment = await vehicleRepository.findAssignmentByIdAndVehicleId(
+    const foundAssignment = await assignmentRepository.findAssignmentByIdAndVehicleId(
         assignmentId,
-        vehicleId
+        existingVehicle.vehicle_id
     );
 
     if (!foundAssignment) {
@@ -471,8 +473,8 @@ export async function getVehicleLocationHistory(vehicleId, queryParams, requesti
     const startTime = queryParams.start_time || null;
     const endTime = queryParams.end_time || null;
 
-    const { listOfPings, totalPingCount } = await vehicleRepository.findLocationPingsByVehicleId(
-        vehicleId,
+    const { listOfPings, totalPingCount } = await locationPingRepository.findLocationPingsByVehicleId(
+        existingVehicle.vehicle_id,
         { limit, offset, startTime, endTime }
     );
 
@@ -502,7 +504,7 @@ export async function getVehicleLastLocation(vehicleId, requestingUser) {
         throw { statusCode: 404, message: 'This vehicle does not have a tracking device assigned' };
     }
 
-    const lastKnownPing = await vehicleRepository.findLastKnownLocationByVehicleId(vehicleId);
+    const lastKnownPing = await locationPingRepository.findLastKnownLocationByVehicleId(existingVehicle.vehicle_id);
 
     if (!lastKnownPing) {
         throw { statusCode: 404, message: 'No location data available for this vehicle yet' };

@@ -24,22 +24,3 @@ export async function getProvinceById(req, res) {
     return sendError(res, 500, 'Internal server error');
   }
 }
-
-export async function getDistrictsByProvince(req, res) {
-  try {
-    const result = await provinceService.getDistrictsByProvince(
-      req.params.provinceId,
-      req.query,
-      req.user,
-    );
-    return sendCollection(
-      res, 200,
-      `Districts in ${result.province.province_name} retrieved successfully`,
-      result.collection,
-    );
-  } catch (err) {
-    if (err.statusCode) return sendError(res, err.statusCode, err.message);
-    console.error('[PROVINCE] getDistrictsByProvince error:', err);
-    return sendError(res, 500, 'Internal server error');
-  }
-}

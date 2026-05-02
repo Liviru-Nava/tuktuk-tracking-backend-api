@@ -2,7 +2,7 @@
 
 import { v4 as uuidv4 } from 'uuid';
 import * as driverRepository from '../repositories/driverRepository.js';
-import { encrypt, decrypt } from '../utils/encryption.js';
+import { encrypt, decrypt, hmac } from '../utils/encryption.js';
 import { getPaginationParams, buildCollection } from '../utils/paginationUtils.js';
 
 // decrypts all sensitive PII fields — only used for home jurisdiction access
@@ -97,7 +97,7 @@ export async function getAllDrivers(queryParams, requestingUser) {
     );
 
     return buildCollection(
-        '/api/v1/drivers',
+        '/tuktrack/v1/drivers',
         offset,
         limit,
         totalDriverCount,
@@ -110,7 +110,9 @@ export async function getDriverById(driverId, requestingUser) {
         throw { statusCode: 400, message: 'Driver ID is required' };
     }
 
-    const foundDriver = await driverRepository.findDriverById(driverId);
+    const driverHmac = hmac(driverId.trim().toUpperCase());
+    console.log('Looking up driver with HMAC:', driverHmac);
+    const foundDriver = await driverRepository.findDriverById(driverHmac);
     if (!foundDriver) {
         throw { statusCode: 404, message: 'Driver not found' };
     }
@@ -129,7 +131,7 @@ export async function getDriverById(driverId, requestingUser) {
     }
 
     // cross-jurisdiction — return restricted summary with contact station
-    const driverDistrictInfo = await driverRepository.findPrimaryDistrictForDriver(driverId);
+    const driverDistrictInfo = await driverRepository.findPrimaryDistrictForDriver(foundDriver.driver_id);
     const contactStation = driverDistrictInfo
         ? await driverRepository.findContactStationForDistrict(driverDistrictInfo.district_id)
         : null;
@@ -189,15 +191,16 @@ export async function createDriver(requestBody, requestingUser) {
     }
 
     const createdDriver = await driverRepository.createDriver({
-        driver_id:          uuidv4(),
-        driver_fullname:    driver_fullname.trim(),
-        driver_identity_no: encrypt(driver_identity_no.trim().toUpperCase()),
+        driver_id:               uuidv4(),
+        driver_fullname:         driver_fullname.trim(),
+        driver_identity_no:      encrypt(driver_identity_no.trim().toUpperCase()),
         driver_id_type,
         date_of_birth,
         driver_gender,
-        driver_contact_no:  driver_contact_no  ? encrypt(driver_contact_no.trim())  : null,
-        address:            address            ? encrypt(address.trim())            : null,
-        driver_license_no:  encrypt(driver_license_no.trim().toUpperCase()),
+        driver_contact_no:       driver_contact_no ? encrypt(driver_contact_no.trim()) : null,
+        address:                 address           ? encrypt(address.trim())           : null,
+        driver_license_no:       encrypt(driver_license_no.trim().toUpperCase()),
+        driver_license_no_hmac:  hmac(driver_license_no.trim().toUpperCase()),
         license_expiry_date,
         status: 'ACTIVE',
     });
@@ -218,7 +221,8 @@ export async function updateDriver(driverId, requestBody, requestingUser) {
         throw { statusCode: 400, message: 'Driver ID is required' };
     }
 
-    const existingDriver = await driverRepository.findDriverById(driverId);
+    const driverHmac = hmac(driverId.trim().toUpperCase());
+    const existingDriver = await driverRepository.findDriverById(driverHmac);
     if (!existingDriver) {
         throw { statusCode: 404, message: 'Driver not found' };
     }
@@ -291,7 +295,7 @@ export async function updateDriver(driverId, requestBody, requestingUser) {
         };
     }
 
-    const updatedDriver = await driverRepository.updateDriver(driverId, fieldsToUpdate);
+    const updatedDriver = await driverRepository.updateDriver(driverHmac, fieldsToUpdate);
 
     return {
         ...updatedDriver,
@@ -312,7 +316,8 @@ export async function suspendDriver(driverId, requestingUser) {
         throw { statusCode: 400, message: 'Driver ID is required' };
     }
 
-    const existingDriver = await driverRepository.findDriverById(driverId);
+    const driverHmac = hmac(driverId.trim().toUpperCase());
+    const existingDriver = await driverRepository.findDriverById(driverHmac);
     if (!existingDriver) {
         throw { statusCode: 404, message: 'Driver not found' };
     }
@@ -347,7 +352,7 @@ export async function suspendDriver(driverId, requestingUser) {
         };
     }
 
-    return driverRepository.changeDriverStatus(driverId, 'SUSPENDED');
+    return driverRepository.changeDriverStatus(driverHmac, 'SUSPENDED');
 }
 
 export async function changeDriverStatus(driverId, requestBody, requestingUser) {
@@ -365,7 +370,8 @@ export async function changeDriverStatus(driverId, requestBody, requestingUser) 
         };
     }
 
-    const existingDriver = await driverRepository.findDriverById(driverId);
+    const driverHmac = hmac(driverId.trim().toUpperCase());
+    const existingDriver = await driverRepository.findDriverById(driverHmac);
     if (!existingDriver) {
         throw { statusCode: 404, message: 'Driver not found' };
     }
@@ -410,5 +416,5 @@ export async function changeDriverStatus(driverId, requestBody, requestingUser) 
         }
     }
 
-    return driverRepository.changeDriverStatus(driverId, newStatus);
+    return driverRepository.changeDriverStatus(driverHmac, newStatus);
 }

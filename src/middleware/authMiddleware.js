@@ -9,7 +9,8 @@ export function authenticate(request, response, next) {
         const authHeader = request.headers.authorization;
 
         if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        return sendError(response, 401, 'Authorization header missing or malformed');
+            response.set('WWW-Authenticate', 'Bearer realm="tuktrack"');
+            return sendError(response, 401, 'Authorization header missing or malformed');
         }
 
         const token   = authHeader.split(' ')[1];
@@ -23,7 +24,8 @@ export function authenticate(request, response, next) {
         return sendError(response, 401, 'Access token has expired');
         }
         if (err.name === 'JsonWebTokenError') {
-        return sendError(response, 401, 'Invalid access token');
+            response.set('WWW-Authenticate', 'Bearer realm="tuktrack"');
+            return sendError(response, 401, 'Invalid access token');
         }
         return sendError(response, 500, 'Internal server error');
     }

@@ -3,7 +3,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import * as ownerRepository from '../repositories/ownerRepository.js';
 import { getPaginationParams, buildCollection } from '../utils/paginationUtils.js';
-import { encrypt, decrypt } from '../utils/encryption.js';
+import { encrypt, decrypt, hmac } from '../utils/encryption.js';
 
 function decryptOwnerFields(ownerRecord) {
     if (!ownerRecord) return ownerRecord;
@@ -61,7 +61,7 @@ export async function getAllOwners(queryParams, requestingUser) {
     const decryptedListOfOwners = listOfOwners.map(decryptOwnerFields);
 
     return buildCollection(
-        '/api/v1/owners',
+        '/tuktrack/v1/owners',
         offset,
         limit,
         totalOwnerCount,
@@ -74,7 +74,8 @@ export async function getOwnerById(ownerId, requestingUser) {
         throw { statusCode: 400, message: 'Owner ID is required' };
     }
 
-    const foundOwner = await ownerRepository.findOwnerById(ownerId);
+    const encryptedOwnerId = hmac(ownerId.trim().toUpperCase());
+    const foundOwner = await ownerRepository.findOwnerById(encryptedOwnerId);
     if (!foundOwner) {
         throw { statusCode: 404, message: 'Owner not found' };
     }
@@ -161,7 +162,8 @@ export async function updateOwner(ownerId, requestBody, requestingUser) {
         throw { statusCode: 400, message: 'Owner ID is required' };
     }
 
-    const existingOwner = await ownerRepository.findOwnerById(ownerId);
+    const encryptedOwnerId = encrypt(ownerId.trim().toUpperCase());
+    const existingOwner = await ownerRepository.findOwnerById(encryptedOwnerId);
     if (!existingOwner) {
         throw { statusCode: 404, message: 'Owner not found' };
     }
@@ -221,7 +223,7 @@ export async function updateOwner(ownerId, requestBody, requestingUser) {
         };
     }
 
-    const updatedOwner = await ownerRepository.updateOwner(ownerId, fieldsToUpdate);
+    const updatedOwner = await ownerRepository.updateOwner(encryptedOwnerId, fieldsToUpdate);
 
     return {
         ...updatedOwner,
@@ -240,7 +242,8 @@ export async function deactivateOwner(ownerId, requestingUser) {
         throw { statusCode: 400, message: 'Owner ID is required' };
     }
 
-    const existingOwner = await ownerRepository.findOwnerById(ownerId);
+    const encryptedOwnerId = encrypt(ownerId.trim().toUpperCase());
+    const existingOwner = await ownerRepository.findOwnerById(encryptedOwnerId);
     if (!existingOwner) {
         throw { statusCode: 404, message: 'Owner not found' };
     }
@@ -259,7 +262,7 @@ export async function deactivateOwner(ownerId, requestingUser) {
         }
     }
 
-    const numberOfActiveVehicles = await ownerRepository.countActiveVehiclesByOwnerId(ownerId);
+    const numberOfActiveVehicles = await ownerRepository.countActiveVehiclesByOwnerId(existingOwner.owner_id);
     if (numberOfActiveVehicles > 0) {
         throw {
             statusCode: 409,
@@ -267,7 +270,7 @@ export async function deactivateOwner(ownerId, requestingUser) {
         };
     }
 
-    return ownerRepository.deactivateOwner(ownerId);
+    return ownerRepository.deactivateOwner(encryptedOwnerId);
 }
 
 export async function getOwnerVehicles(ownerId, queryParams, requestingUser) {
@@ -275,7 +278,8 @@ export async function getOwnerVehicles(ownerId, queryParams, requestingUser) {
         throw { statusCode: 400, message: 'Owner ID is required' };
     }
 
-    const existingOwner = await ownerRepository.findOwnerById(ownerId);
+    const encryptedOwnerId = encrypt(ownerId.trim().toUpperCase());
+    const existingOwner = await ownerRepository.findOwnerById(encryptedOwnerId);
     if (!existingOwner) {
         throw { statusCode: 404, message: 'Owner not found' };
     }
@@ -294,7 +298,7 @@ export async function getOwnerVehicles(ownerId, queryParams, requestingUser) {
     const { limit, offset } = getPaginationParams(queryParams);
 
     const { vehiclesOfOwner, totalVehicleCount } = await ownerRepository.findVehiclesByOwnerId(
-        ownerId,
+        existingOwner.owner_id,
         {
             limit,
             offset,
@@ -307,7 +311,7 @@ export async function getOwnerVehicles(ownerId, queryParams, requestingUser) {
     return {
         owner: decryptedOwner,
         collection: buildCollection(
-            `/api/v1/owners/${ownerId}/vehicles`,
+            `/tuktrack/v1/owners/${ownerId}/vehicles`,
             offset,
             limit,
             totalVehicleCount,

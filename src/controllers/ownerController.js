@@ -16,7 +16,7 @@ export async function getAllOwners(request, response) {
 
 export async function getOwnerById(request, response) {
     try {
-        const foundOwner = await ownerService.getOwnerById(request.params.ownerId, request.user);
+        const foundOwner = await ownerService.getOwnerById(request.params.ownerIdentityNo, request.user);
         return sendSuccess(response, 200, 'Owner retrieved successfully', foundOwner);
     } catch (error) {
         if (error.statusCode) return sendError(response, error.statusCode, error.message);
@@ -39,7 +39,7 @@ export async function createOwner(request, response) {
 export async function updateOwner(request, response) {
     try {
         const updatedOwner = await ownerService.updateOwner(
-            request.params.ownerId,
+            request.params.ownerIdentityNo,
             request.body,
             request.user,
         );
@@ -54,7 +54,7 @@ export async function updateOwner(request, response) {
 export async function deactivateOwner(request, response) {
     try {
         const deactivatedOwner = await ownerService.deactivateOwner(
-            request.params.ownerId,
+            request.params.ownerIdentityNo,
             request.user,
         );
         return sendSuccess(response, 200, 'Owner deactivated successfully', deactivatedOwner);
@@ -68,7 +68,7 @@ export async function deactivateOwner(request, response) {
 export async function getOwnerVehicles(request, response) {
     try {
         const result = await ownerService.getOwnerVehicles(
-            request.params.ownerId,
+            request.params.ownerIdentityNo,
             request.query,
             request.user,
         );

@@ -15,7 +15,22 @@ import driverRoutes from '../routes/driverRoutes.js';
 import trackingDeviceRoutes from '../routes/trackingDeviceRoutes.js';
 import locationPingRoutes from '../routes/locationPingRoutes.js';
 
+//Swagger imports
+import swaggerUi from 'swagger-ui-express';
+import YAML from 'yamljs';
+import { fileURLToPath } from 'url';
+import path from 'path';
+
 const app = express();
+
+//used to trust the nginx proxy
+app.set('trust proxy', 1);
+
+//swagger related codes
+const currentFilePath = fileURLToPath(import.meta.url);
+const projectRoot = path.resolve(path.dirname(currentFilePath), '../../');
+const swaggerDocument = YAML.load(path.join(projectRoot, 'swaggerAPISpec.yaml'));
+
 app.use(helmet());
 app.use(cors({
     origin: process.env.NODE_ENV === 'production' ? process.env.ALLOWED_ORIGINS?.split(',') : '*',
@@ -31,8 +46,8 @@ const globalLimiter = rateLimit({
 
 // Stricter limiter for auth endpoints to prevent brute force
 const authLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000,  // 15 minutes
-    max:      20,               // 20 login attempts per 15 min per IP
+    windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000,  // 15 minutes
+    max:      parseInt(process.env.RATE_LIMIT_MAX)        || 20,               // 20 login attempts per 15 min per IP
     message:  { success: false, message: 'Too many login attempts, please try again later' },
 });
 
@@ -47,17 +62,23 @@ app.get('/health', (req, res) => {
 });
 
 //main route definition
-app.use('/api/v1/auth', authLimiter, authRoutes);
-app.use('/api/v1/provinces', provinceRoutes);
-app.use('/api/v1/districts', districtRoutes);
-app.use('/api/v1/roles', roleRoutes);
-app.use('/api/v1/offices', officeRoutes);
-app.use('/api/v1/users', userRoutes);
-app.use('/api/v1/owners', ownerRoutes);
-app.use('/api/v1/vehicles', vehicleRoutes);
-app.use('/api/v1/drivers', driverRoutes);
-app.use('/api/v1/tracking-devices', trackingDeviceRoutes);
-app.use('/api/v1/location-pings', locationPingRoutes);
+
+//auth processing function routes with verb-based group
+app.use('/tuktrack/v1/auth', authLimiter, authRoutes);
+
+app.use('/tuktrack/v1/provinces', provinceRoutes);
+app.use('/tuktrack/v1/districts', districtRoutes);
+app.use('/tuktrack/v1/roles', roleRoutes);
+app.use('/tuktrack/v1/offices', officeRoutes);
+app.use('/tuktrack/v1/users', userRoutes);
+app.use('/tuktrack/v1/owners', ownerRoutes);
+app.use('/tuktrack/v1/vehicles', vehicleRoutes);
+app.use('/tuktrack/v1/drivers', driverRoutes);
+app.use('/tuktrack/v1/tracking-devices', trackingDeviceRoutes);
+app.use('/tuktrack/v1/location-pings', locationPingRoutes);
+
+//swagger definition
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
 //handle 404 not found cases
 app.use((req, res) => {

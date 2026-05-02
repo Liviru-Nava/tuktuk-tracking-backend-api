@@ -58,10 +58,6 @@ export async function login(username, password) {
     // 6. Update last login
     await authRepo.updateLastLogin(user.user_id);
 
-    console.log('DEBUG contact_no raw value:', JSON.stringify(user.contact_no));
-    console.log('DEBUG contact_no type:', typeof user.contact_no);
-    console.log('DEBUG contact_no truthy:', !!user.contact_no);
-
     // 7. Return — decrypt contact_no before returning user profile
     return {
         accessToken,

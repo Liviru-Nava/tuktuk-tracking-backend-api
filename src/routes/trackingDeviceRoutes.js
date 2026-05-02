@@ -21,41 +21,41 @@ trackingDeviceRouter.post(
 );
 
 trackingDeviceRouter.get(
-    '/:deviceId',
+    '/:deviceSerialNo',
     requirePermission('device:view'),
     trackingDeviceController.getDeviceById,
 );
 
 trackingDeviceRouter.put(
-    '/:deviceId',
+    '/:deviceSerialNo',
     requirePermission('device:edit'),
     trackingDeviceController.updateDevice,
 );
 
 // soft decommission
 trackingDeviceRouter.delete(
-    '/:deviceId',
+    '/:deviceSerialNo',
     requirePermission('device:delete'),
     trackingDeviceController.decommissionDevice,
 );
 
 // composite endpoint — device details + latest ping health check
 trackingDeviceRouter.get(
-    '/:deviceId/status',
+    '/:deviceSerialNo/status',
     requirePermission('device:view'),
     trackingDeviceController.getDeviceStatusComposite,
 );
 
 // full ping history for this device with optional time window
 trackingDeviceRouter.get(
-    '/:deviceId/location-pings',
+    '/:deviceSerialNo/location-pings',
     requirePermission('location:view_history'),
     trackingDeviceController.getDeviceLocationPings,
 );
 
 // explicit status transitions — ACTIVE, INACTIVE, FAULTY, DECOMMISSIONED
 trackingDeviceRouter.post(
-    '/:deviceId/change-status',
+    '/:deviceSerialNo/change-status',
     requirePermission('device:assign_to_vehicle'),
     trackingDeviceController.changeDeviceStatus,
 );
