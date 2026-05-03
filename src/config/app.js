@@ -77,7 +77,7 @@ app.use('/tuktrack/v1/vehicles', vehicleRoutes);
 app.use('/tuktrack/v1/drivers', driverRoutes);
 app.use('/tuktrack/v1/tracking-devices', trackingDeviceRoutes);
 app.use('/tuktrack/v1/location-pings', locationPingRoutes);
-app.use('/tuktrack/v1/assignments', assignmentRoutes);
+app.use('/tuktrack/v1', assignmentRoutes);
 
 //swagger definition
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));

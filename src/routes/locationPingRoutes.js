@@ -2,7 +2,6 @@
 
 import { Router } from 'express';
 import * as locationPingController from '../controllers/locationPingController.js';
-import { authenticate, requirePermission } from '../middleware/authMiddleware.js';
 import { authenticateDevice } from '../middleware/deviceAuthenticationMiddleware.js';
 
 const locationPingRoutes = Router();

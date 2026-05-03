@@ -8,7 +8,7 @@ const assignmentRoutes = Router();
 
 assignmentRoutes.use(authenticate);
 
-// POST /tuktrack/v1/assignments/assign-driver
+// POST /tuktrack/v1/assign-driver
 assignmentRoutes.post(
     '/assign-driver',
     requirePermission('assignment:create'),

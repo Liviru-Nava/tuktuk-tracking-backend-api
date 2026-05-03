@@ -11,7 +11,8 @@ router.use(authenticate);
 router.use(requirePermission('district:view'));
 
 router.get('/', districtController.getAllDistricts);
-router.get('/:districtId', districtController.getDistrictById);router.get('/:districtId/offices',
+router.get('/:districtId', districtController.getDistrictById);
+router.get('/:districtId/offices',
   requirePermission('office:view'),
   officeController.getOfficesByDistrict,
 );

@@ -159,10 +159,22 @@ export async function assignDevice(requestBody) {
         throw { statusCode: 404, message: 'Vehicle not found or has been deregistered' };
     }
 
-    // rule 2
-    const targetDevice = await db('tracking_devices')
-        .where({ device_id })
-        .first();
+    // rule 2 — look up device by UUID first, fall back to serial number
+    // so both the device_id (UUID) and device_serial_no are accepted
+    const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    let targetDevice;
+
+    if (UUID_PATTERN.test(device_id)) {
+        targetDevice = await db('tracking_devices')
+            .where({ device_id })
+            .first();
+    } else {
+        // treat as serial number
+        targetDevice = await db('tracking_devices')
+            .where({ device_serial_no: device_id.trim().toUpperCase() })
+            .first();
+    }
+
     if (!targetDevice) {
         throw { statusCode: 404, message: 'Tracking device not found' };
     }
@@ -170,17 +182,20 @@ export async function assignDevice(requestBody) {
         throw { statusCode: 409, message: 'Cannot assign a decommissioned device to a vehicle' };
     }
 
+    // use the resolved internal UUID from here on
+    const resolvedDeviceId = targetDevice.device_id;
+
     // rule 3 — vehicle already has a device
     if (targetVehicle.device_id !== null) {
         throw {
             statusCode: 409,
-            message: `Vehicle already has a tracking device assigned (device_id: ${targetVehicle.device_id}). Decommission or unassign the existing device first.`,
+            message: `Vehicle already has a tracking device assigned (device_id: ${targetVehicle.device_id}). Unassign the existing device first.`,
         };
     }
 
     // rule 4 — device is already on another vehicle
     const vehicleAlreadyUsingThisDevice = await db('vehicles')
-        .where({ device_id })
+        .where({ device_id: resolvedDeviceId })
         .first();
     if (vehicleAlreadyUsingThisDevice) {
         throw {
@@ -193,7 +208,7 @@ export async function assignDevice(requestBody) {
     const [updatedVehicle] = await db('vehicles')
         .where({ vehicle_id })
         .update({
-            device_id,
+            device_id:    resolvedDeviceId,
             updated_time: db.fn.now(),
         })
         .returning([

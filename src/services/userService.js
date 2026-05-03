@@ -148,7 +148,7 @@ export async function getAllUsers(queryParams, requestingUser) {
     const decryptedListOfUsers = listOfUsers.map(decryptUserContactNo);
 
     return buildCollection(
-        '/api/v1/users',
+        '/tuktrack/v1/users',
         offset,
         limit,
         totalUserCount,
@@ -284,7 +284,7 @@ export async function updateUser(userId, requestBody, requestingUser) {
 
     if (requestBody.email_address !== undefined) {
         const duplicateEmailUser = await userRepository.getUserByEmail(requestBody.email_address);
-        if (duplicateEmailUser && duplicateEmailUser.user_id !== existingUser.user_id) {
+        if (duplicateEmailUser && duplicateEmailUser.user_id !== userId) {
             throw { statusCode: 409, message: 'Email address is already in use by another user' };
         }
         fieldsToUpdate.email_address = requestBody.email_address.trim().toLowerCase();
