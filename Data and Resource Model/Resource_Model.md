@@ -1,6 +1,6 @@
 # API Resource Model — Tuk-Tuk Tracking System
 
-**Base Path:** `/api/v1`  
+**Base Path:** `/tuktrack/v1`  
 **Auth Scheme:** JWT Bearer Token
 
 ---
@@ -30,9 +30,9 @@
 
 | Method | Endpoint | Description | Access |
 |---|---|---|---|
-| `POST` | `/api/v1/auth/login` | Authenticates user, returns JWT access token and refresh token. | Public |
-| `POST` | `/api/v1/auth/logout` | Invalidates the current JWT token. | Authenticated |
-| `POST` | `/api/v1/auth/refresh` | Issues a new access token using a valid refresh token. | Authenticated |
+| `POST` | `/tuktrack/v1/auth/login` | Authenticates user, returns JWT access token and refresh token. | Public |
+| `POST` | `/tuktrack/v1/auth/logout` | Invalidates the current JWT token. | Authenticated |
+| `POST` | `/tuktrack/v1/auth/refresh` | Issues a new access token using a valid refresh token. | Authenticated |
 
 ---
 
@@ -44,9 +44,9 @@
 
 | Method | Endpoint | Description | Access |
 |---|---|---|---|
-| `GET` | `/api/v1/provinces` | Returns all 9 provinces. | Authenticated |
-| `GET` | `/api/v1/provinces/{province-id}` | Returns a single province record with all fields above. | Authenticated |
-| `GET` | `/api/v1/provinces/{province-id}/districts` | Returns all districts belonging to this province. | `district:view` |
+| `GET` | `/tuktrack/v1/provinces` | Returns all 9 provinces. | Authenticated |
+| `GET` | `/tuktrack/v1/provinces/{province-id}` | Returns a single province record with all fields above. | Authenticated |
+| `GET` | `/tuktrack/v1/provinces/{province-id}/districts` | Returns all districts belonging to this province. | `district:view` |
 
 ---
 
@@ -58,9 +58,9 @@
 
 | Method | Endpoint | Description | Access |
 |---|---|---|---|
-| `GET` | `/api/v1/districts` | Returns all 25 districts. Supports `?province-id=`, `?offset=`, `?limit=`. | Authenticated |
-| `GET` | `/api/v1/districts/{district-id}` | Returns a single district record with all fields above. | Authenticated |
-| `GET` | `/api/v1/districts/{district-id}/offices` | Returns all offices within this district. | `office:view` |
+| `GET` | `/tuktrack/v1/districts` | Returns all 25 districts. Supports `?province-id=`, `?offset=`, `?limit=`. | Authenticated |
+| `GET` | `/tuktrack/v1/districts/{district-id}` | Returns a single district record with all fields above. | Authenticated |
+| `GET` | `/tuktrack/v1/districts/{district-id}/offices` | Returns all offices within this district. | `office:view` |
 
 ---
 
@@ -70,12 +70,12 @@
 
 | Method | Endpoint | Description | Access |
 |---|---|---|---|
-| `GET` | `/api/v1/offices` | Returns offices within caller's jurisdiction. Supports `?jurisdiction-type=`, `?office-type=`, `?district-id=`, `?province-id=`, `?offset=`, `?limit=`. | `office:view` |
-| `POST` | `/api/v1/offices` | Creates a new office. | `office:create` |
-| `GET` | `/api/v1/offices/{office-id}` | Returns a single office record with all fields above. | `office:view` |
-| `PUT` | `/api/v1/offices/{office-id}` | Full replacement update of an office record. | `office:edit` |
-| `DELETE` | `/api/v1/offices/{office-id}` | Transitions office `status` to `CLOSED`. | `office:delete` |
-| `GET` | `/api/v1/offices/{office-id}/users` | Returns all users belonging to this office. | `user:view` |
+| `GET` | `/tuktrack/v1/offices` | Returns offices within caller's jurisdiction. Supports `?jurisdiction-type=`, `?office-type=`, `?district-id=`, `?province-id=`, `?offset=`, `?limit=`. | `office:view` |
+| `POST` | `/tuktrack/v1/offices` | Creates a new office. | `office:create` |
+| `GET` | `/tuktrack/v1/offices/{office-id}` | Returns a single office record with all fields above. | `office:view` |
+| `PUT` | `/tuktrack/v1/offices/{office-id}` | Full replacement update of an office record. | `office:edit` |
+| `DELETE` | `/tuktrack/v1/offices/{office-id}` | Transitions office `status` to `CLOSED`. | `office:delete` |
+| `GET` | `/tuktrack/v1/offices/{office-id}/users` | Returns all users belonging to this office. | `user:view` |
 
 ---
 
@@ -87,9 +87,9 @@
 
 | Method | Endpoint | Description | Access |
 |---|---|---|---|
-| `GET` | `/api/v1/roles` | Returns all roles with their permission arrays and management scope. | Authenticated |
-| `GET` | `/api/v1/roles/{role-id}` | Returns a single role record with full permission list. | Authenticated |
-| `PUT` | `/api/v1/roles/{role-id}` | Updates `permissions` array and `role_description` only. | `HQ_SUPER_ADMIN` |
+| `GET` | `/tuktrack/v1/roles` | Returns all roles with their permission arrays and management scope. | Authenticated |
+| `GET` | `/tuktrack/v1/roles/{role-id}` | Returns a single role record with full permission list. | Authenticated |
+| `PUT` | `/tuktrack/v1/roles/{role-id}` | Updates `permissions` array and `role_description` only. | `HQ_SUPER_ADMIN` |
 
 ---
 
@@ -99,12 +99,12 @@
 
 | Method | Endpoint | Description | Access |
 |---|---|---|---|
-| `GET` | `/api/v1/users` | Returns paginated list of users within caller's jurisdiction. Supports `?office-id=`, `?role-id=`, `?status=`, `?offset=`, `?limit=`. | `user:view` |
-| `POST` | `/api/v1/users` | Creates a new user account within caller's management scope. | `user:create` |
-| `GET` | `/api/v1/users/{user-id}` | Returns a single user record with all fields above. | `user:view` / Self |
-| `PUT` | `/api/v1/users/{user-id}` | Full replacement update of a user record. | `user:edit` |
-| `DELETE` | `/api/v1/users/{user-id}` | Transitions user `status` to `INACTIVE`. | `user:deactivate` |
-| `POST` | `/api/v1/users/{user-id}/deactivate` | Transitions user `status` to `INACTIVE` without a full PUT payload. | `user:deactivate` |
+| `GET` | `/tuktrack/v1/users` | Returns paginated list of users within caller's jurisdiction. Supports `?office-id=`, `?role-id=`, `?status=`, `?offset=`, `?limit=`. | `user:view` |
+| `POST` | `/tuktrack/v1/users` | Creates a new user account within caller's management scope. | `user:create` |
+| `GET` | `/tuktrack/v1/users/{user-id}` | Returns a single user record with all fields above. | `user:view` / Self |
+| `PUT` | `/tuktrack/v1/users/{user-id}` | Full replacement update of a user record. | `user:edit` |
+| `DELETE` | `/tuktrack/v1/users/{user-id}` | Transitions user `status` to `INACTIVE`. | `user:deactivate` |
+| `POST` | `/tuktrack/v1/users/{user-id}/deactivate` | Transitions user `status` to `INACTIVE` without a full PUT payload. | `user:deactivate` |
 
 ---
 
@@ -114,32 +114,32 @@
 
 | Method | Endpoint | Description | Access |
 |---|---|---|---|
-| `GET` | `/api/v1/owners` | Returns paginated list of all owners. Supports `?status=`, `?offset=`, `?limit=`. | `owner:view` |
-| `POST` | `/api/v1/owners` | Registers a new vehicle owner. | `owner:create` |
-| `GET` | `/api/v1/owners/{owner-id}` | Returns a single owner record with all fields above. | `owner:view` |
-| `PUT` | `/api/v1/owners/{owner-id}` | Full replacement update of an owner record. | `owner:edit` |
-| `DELETE` | `/api/v1/owners/{owner-id}` | Transitions owner `status` to `INACTIVE`. | `owner:delete` |
-| `GET` | `/api/v1/owners/{owner-id}/vehicles` | Returns all vehicles registered under this owner. | `owner:view`, `vehicle:view` |
+| `GET` | `/tuktrack/v1/owners` | Returns paginated list of all owners. Supports `?status=`, `?offset=`, `?limit=`. | `owner:view` |
+| `POST` | `/tuktrack/v1/owners` | Registers a new vehicle owner. | `owner:create` |
+| `GET` | `/tuktrack/v1/owners/{owner-id}` | Returns a single owner record with all fields above. | `owner:view` |
+| `PUT` | `/tuktrack/v1/owners/{owner-id}` | Full replacement update of an owner record. | `owner:edit` |
+| `DELETE` | `/tuktrack/v1/owners/{owner-id}` | Transitions owner `status` to `INACTIVE`. | `owner:delete` |
+| `GET` | `/tuktrack/v1/owners/{owner-id}/vehicles` | Returns all vehicles registered under this owner. | `owner:view`, `vehicle:view` |
 
 ---
 
 ## 8. Vehicles
 
-**Fields:** `vehicle_id`, `owner_id`, `district_id`, `device_id`, `license_plate_no`, `vehicle_reg_no`, `chassis_number`, `engine_number`, `make_of_vehicle`, `model_of_vehicle`, `manufacture_year`, `vehicle_colour`, `fuel_type`, `is_diplomatic`, `vehicle_reg_date`, `status`, `created_time`, `updated_time`
+**Fields:** `vehicle_id`, `owner_id`, `district_id`, `device_id`, `license_plate_no`, `chassis_number`, `engine_number`, `make_of_vehicle`, `model_of_vehicle`, `manufacture_year`, `vehicle_colour`, `fuel_type`, `is_diplomatic`, `vehicle_reg_date`, `status`, `created_time`, `updated_time`
 
 | Method | Endpoint | Description | Access |
 |---|---|---|---|
-| `GET` | `/api/v1/vehicles` | Returns paginated list of vehicles filtered by caller's jurisdiction. Supports `?province-id=`, `?district-id=`, `?status=`, `?reg-no=`, `?owner-id=`, `?offset=`, `?limit=`. | `vehicle:view` |
-| `POST` | `/api/v1/vehicles` | Registers a new vehicle. | `vehicle:create` |
-| `GET` | `/api/v1/vehicles/{vehicle-id}` | Returns a single vehicle record with all fields above. | `vehicle:view` |
-| `PUT` | `/api/v1/vehicles/{vehicle-id}` | Full replacement update of a vehicle record. | `vehicle:edit` |
-| `DELETE` | `/api/v1/vehicles/{vehicle-id}` | Transitions vehicle `status` to `DEREGISTERED`. | `vehicle:delete` |
-| `GET` | `/api/v1/vehicles/{vehicle-id}/profile` | Composite — returns vehicle + owner + current driver + active device details. | `vehicle:view` |
-| `GET` | `/api/v1/vehicles/{vehicle-id}/drivers` | Returns full driver assignment history for this vehicle. | `assignment:view` |
-| `GET` | `/api/v1/vehicles/{vehicle-id}/assignments/{assignment-id}` | Returns a single assignment record with `assignment_id`, `assigned_time`, `unassigned_time`, `is_driver_owner`, `is_current_driver`. | `assignment:view` |
-| `GET` | `/api/v1/vehicles/{vehicle-id}/location-pings` | Returns GPS location history. Supports `?from=`, `?to=` (ISO 8601), `?offset=`, `?limit=`. | `location:view_history` |
-| `GET` | `/api/v1/vehicles/{vehicle-id}/last-location` | Returns the single most recent GPS ping for this vehicle via linked `device_id`. | `location:view_live` |
-| `POST` | `/api/v1/vehicles/{vehicle-id}/change-status` | Updates `status` field only — `ACTIVE`, `SUSPENDED`, `FLAGGED`. | `vehicle:change_status` |
+| `GET` | `/tuktrack/v1/vehicles` | Returns paginated list of vehicles filtered by caller's jurisdiction. Supports `?province-id=`, `?district-id=`, `?status=`, `?reg-no=`, `?owner-id=`, `?offset=`, `?limit=`. | `vehicle:view` |
+| `POST` | `/tuktrack/v1/vehicles` | Registers a new vehicle. | `vehicle:create` |
+| `GET` | `/tuktrack/v1/vehicles/{vehicle-id}` | Returns a single vehicle record with all fields above. | `vehicle:view` |
+| `PUT` | `/tuktrack/v1/vehicles/{vehicle-id}` | Full replacement update of a vehicle record. | `vehicle:edit` |
+| `DELETE` | `/tuktrack/v1/vehicles/{vehicle-id}` | Transitions vehicle `status` to `DEREGISTERED`. | `vehicle:delete` |
+| `GET` | `/tuktrack/v1/vehicles/{vehicle-id}/profile` | Composite — returns vehicle + owner + current driver + active device details. | `vehicle:view` |
+| `GET` | `/tuktrack/v1/vehicles/{vehicle-id}/drivers` | Returns full driver assignment history for this vehicle. | `assignment:view` |
+| `GET` | `/tuktrack/v1/vehicles/{vehicle-id}/assignments/{assignment-id}` | Returns a single assignment record with `assignment_id`, `assigned_time`, `unassigned_time`, `is_driver_owner`, `is_current_driver`. | `assignment:view` |
+| `GET` | `/tuktrack/v1/vehicles/{vehicle-id}/location-pings` | Returns GPS location history. Supports `?from=`, `?to=` (ISO 8601), `?offset=`, `?limit=`. | `location:view_history` |
+| `GET` | `/tuktrack/v1/vehicles/{vehicle-id}/last-location` | Returns the single most recent GPS ping for this vehicle via linked `device_id`. | `location:view_live` |
+| `POST` | `/tuktrack/v1/vehicles/{vehicle-id}/change-status` | Updates `status` field only — `ACTIVE`, `SUSPENDED`, `FLAGGED`. | `vehicle:change_status` |
 
 ---
 
@@ -149,12 +149,12 @@
 
 | Method | Endpoint | Description | Access |
 |---|---|---|---|
-| `GET` | `/api/v1/drivers` | Returns paginated list of drivers. Supports `?status=`, `?offset=`, `?limit=`. | `driver:view` |
-| `POST` | `/api/v1/drivers` | Registers a new driver. | `driver:create` |
-| `GET` | `/api/v1/drivers/{driver-id}` | Returns a single driver record with all fields above. | `driver:view` |
-| `PUT` | `/api/v1/drivers/{driver-id}` | Full replacement update of a driver record. | `driver:edit` |
-| `DELETE` | `/api/v1/drivers/{driver-id}` | Transitions driver `status` to `SUSPENDED`. | `driver:delete` |
-| `POST` | `/api/v1/drivers/{driver-id}/change-status` | Updates `status` field only — `ACTIVE`, `SUSPENDED`, `BLACKLISTED`. | `driver:change_status` |
+| `GET` | `/tuktrack/v1/drivers` | Returns paginated list of drivers. Supports `?status=`, `?offset=`, `?limit=`. | `driver:view` |
+| `POST` | `/tuktrack/v1/drivers` | Registers a new driver. | `driver:create` |
+| `GET` | `/tuktrack/v1/drivers/{driver-id}` | Returns a single driver record with all fields above. | `driver:view` |
+| `PUT` | `/tuktrack/v1/drivers/{driver-id}` | Full replacement update of a driver record. | `driver:edit` |
+| `DELETE` | `/tuktrack/v1/drivers/{driver-id}` | Transitions driver `status` to `SUSPENDED`. | `driver:delete` |
+| `POST` | `/tuktrack/v1/drivers/{driver-id}/change-status` | Updates `status` field only — `ACTIVE`, `SUSPENDED`, `BLACKLISTED`. | `driver:change_status` |
 
 ---
 
@@ -164,14 +164,14 @@
 
 | Method | Endpoint | Description | Access |
 |---|---|---|---|
-| `GET` | `/api/v1/tracking-devices` | Returns paginated list of devices. Supports `?vehicle-id=`, `?device-status=`, `?offset=`, `?limit=`. | `device:view` |
-| `POST` | `/api/v1/tracking-devices` | Registers a new tracking device. | `device:create` |
-| `GET` | `/api/v1/tracking-devices/{device-id}` | Returns a single device record with all fields above. | `device:view` |
-| `PUT` | `/api/v1/tracking-devices/{device-id}` | Full replacement update of a device record. | `device:edit` |
-| `DELETE` | `/api/v1/tracking-devices/{device-id}` | Transitions device `device_status` to `DECOMMISSIONED`. | `device:delete` |
-| `GET` | `/api/v1/tracking-devices/{device-id}/status` | Composite — returns device record + most recent location ping. | `device:view`, `location:view_live` |
-| `GET` | `/api/v1/tracking-devices/{device-id}/location-pings` | Returns all pings from this device. Supports `?from=`, `?to=`, `?offset=`, `?limit=`. | `location:view_history` |
-| `POST` | `/api/v1/tracking-devices/{device-id}/change-status` | Updates `device_status` field only — `ACTIVE`, `INACTIVE`, `FAULTY`, `DECOMMISSIONED`. | `device:edit` |
+| `GET` | `/tuktrack/v1/tracking-devices` | Returns paginated list of devices. Supports `?vehicle-id=`, `?device-status=`, `?offset=`, `?limit=`. | `device:view` |
+| `POST` | `/tuktrack/v1/tracking-devices` | Registers a new tracking device. | `device:create` |
+| `GET` | `/tuktrack/v1/tracking-devices/{device-id}` | Returns a single device record with all fields above. | `device:view` |
+| `PUT` | `/tuktrack/v1/tracking-devices/{device-id}` | Full replacement update of a device record. | `device:edit` |
+| `DELETE` | `/tuktrack/v1/tracking-devices/{device-id}` | Transitions device `device_status` to `DECOMMISSIONED`. | `device:delete` |
+| `GET` | `/tuktrack/v1/tracking-devices/{device-id}/status` | Composite — returns device record + most recent location ping. | `device:view`, `location:view_live` |
+| `GET` | `/tuktrack/v1/tracking-devices/{device-id}/location-pings` | Returns all pings from this device. Supports `?from=`, `?to=`, `?offset=`, `?limit=`. | `location:view_history` |
+| `POST` | `/tuktrack/v1/tracking-devices/{device-id}/change-status` | Updates `device_status` field only — `ACTIVE`, `INACTIVE`, `FAULTY`, `DECOMMISSIONED`. | `device:edit` |
 
 ---
 
@@ -183,8 +183,8 @@
 
 | Method | Endpoint | Description | Access |
 |---|---|---|---|
-| `POST` | `/api/v1/location-pings` | Device submits a new GPS ping. Authenticated by device token. | Device Token |
-| `GET` | `/api/v1/location-pings/{ping-id}` | Returns a single ping record with all fields above. | `location:view_history` |
+| `POST` | `/tuktrack/v1/location-pings` | Device submits a new GPS ping. Authenticated by device token. | Device Token |
+| `GET` | `/tuktrack/v1/location-pings/{ping-id}` | Returns a single ping record with all fields above. | `location:view_history` |
 
 ---
 
@@ -194,9 +194,9 @@
 
 | Method | Endpoint | Description | Access |
 |---|---|---|---|
-| `POST` | `/api/v1/assign-driver` | Atomically closes previous active assignment and opens new one. Accepts `vehicle_id`, `driver_id`, `is_driver_owner`. | `assignment:create` |
-| `POST` | `/api/v1/unassign-driver` | Closes active assignment by setting `unassigned_time` and `is_current_driver = false`. Accepts `vehicle_id`. | `assignment:close` |
-| `POST` | `/api/v1/assign-device` | Links a tracking device to a vehicle by updating `device_id` on the vehicle record. Accepts `vehicle_id`, `device_id`. | `device:assign_to_vehicle` |
+| `POST` | `/tuktrack/v1/assign-driver` | Atomically closes previous active assignment and opens new one. Accepts `vehicle_id`, `driver_id`, `is_driver_owner`. | `assignment:create` |
+| `POST` | `/tuktrack/v1/unassign-driver` | Closes active assignment by setting `unassigned_time` and `is_current_driver = false`. Accepts `vehicle_id`. | `assignment:close` |
+| `POST` | `/tuktrack/v1/assign-device` | Links a tracking device to a vehicle by updating `device_id` on the vehicle record. Accepts `vehicle_id`, `device_id`. | `device:assign_to_vehicle` |
 
 ---
 

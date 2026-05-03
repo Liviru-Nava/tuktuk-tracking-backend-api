@@ -21,25 +21,25 @@ ownerRouter.post(
 );
 
 ownerRouter.get(
-    '/:ownerId',
+    '/:ownerIdentityNo',
     requirePermission('owner:view'),
     ownerController.getOwnerById,
 );
 
 ownerRouter.put(
-    '/:ownerId',
+    '/:ownerIdentityNo',
     requirePermission('owner:edit'),
     ownerController.updateOwner,
 );
 
 ownerRouter.delete(
-    '/:ownerId',
+    '/:ownerIdentityNo',
     requirePermission('owner:delete'),
     ownerController.deactivateOwner,
 );
 
 ownerRouter.get(
-    '/:ownerId/vehicles',
+    '/:ownerIdentityNo/vehicles',
     requirePermission('vehicle:view'),
     ownerController.getOwnerVehicles,
 );

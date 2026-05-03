@@ -50,38 +50,26 @@ export async function findDistrictById(districtId) {
     .first();
 }
 
-// Get all offices in a district
-export async function findOfficesByDistrictId(districtId, { limit, offset } = {}) {
-  return db('offices')
-    .where({
-      jurisdiction_ref_id: districtId,
-      jurisdiction_type:   'DISTRICT',
-    })
+// Get all districts belonging to a province — scoped collection for GET /provinces/:provinceId/districts
+export async function findDistrictsByProvinceId(provinceId, { limit, offset } = {}) {
+  return db('districts')
+    .where({ province_id: provinceId })
     .select(
-      'office_id',
-      'office_code',
-      'office_name',
-      'office_type',
-      'jurisdiction_type',
-      'jurisdiction_ref_id',
-      'office_address',
-      'office_contact',
-      'status',
+      'district_id',
+      'province_id',
+      'district_name',
+      'district_code',
       'created_time',
-      'updated_time',
     )
-    .orderBy('office_name', 'asc')
+    .orderBy('district_name', 'asc')
     .limit(limit)
     .offset(offset);
 }
 
-export async function countOfficesByDistrictId(districtId) {
-  const result = await db('offices')
-    .where({
-      jurisdiction_ref_id: districtId,
-      jurisdiction_type:   'DISTRICT',
-    })
-    .count('office_id as count')
+export async function countDistrictsByProvinceId(provinceId) {
+  const result = await db('districts')
+    .where({ province_id: provinceId })
+    .count('district_id as count')
     .first();
   return parseInt(result.count);
 }

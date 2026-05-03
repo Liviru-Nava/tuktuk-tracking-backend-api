@@ -1,7 +1,8 @@
 //The will be for the routes manegeement for the province endpoints
 
 import { Router } from 'express';
-import * as provinceController from '../controllers/provinceControllers.js';
+import * as provinceController from '../controllers/provinceController.js';
+import * as districtController from '../controllers/districtController.js';
 import { authenticate, requirePermission } from '../middleware/authMiddleware.js';
 
 const router = Router();
@@ -12,6 +13,6 @@ router.use(requirePermission('province:view'));
 
 router.get('/', provinceController.getAllProvinces);
 router.get('/:provinceId', provinceController.getProvinceById);
-router.get('/:provinceId/districts', provinceController.getDistrictsByProvince);
+router.get('/:provinceId/districts', districtController.getDistrictsByProvince);
 
 export default router;

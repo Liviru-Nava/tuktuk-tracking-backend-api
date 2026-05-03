@@ -76,14 +76,14 @@ The API is structured around the following resource groups:
 
 | Resource Group | Base Path | Description |
 |---|---|---|
-| Authentication | `/api/v1/auth` | Login, logout, and token refresh |
-| Users | `/api/v1/users` | Police personnel account management |
-| Owners | `/api/v1/owners` | Tuk-tuk owner records |
-| Vehicles | `/api/v1/vehicles` | Vehicle registration and tracking |
-| Drivers | `/api/v1/drivers` | Driver records and license management |
-| Police Stations | `/api/v1/police-stations` | Station data and jurisdiction management |
-| Provinces | `/api/v1/provinces` | Province reference data |
-| Districts | `/api/v1/districts` | District reference data |
-| Tracking Devices | `/api/v1/tracking-devices` | GPS device management |
-| Location Pings | `/api/v1/location-pings` | GPS ping submission and retrieval |
-| Controllers | `/api/v1/assign-*` | Atomic multi-entity operations |
+| Authentication | `/tuktrack/v1/auth` | Login, logout, and token refresh |
+| Users | `/tuktrack/v1/users` | Police personnel account management |
+| Owners | `/tuktrack/v1/owners` | Tuk-tuk owner records |
+| Vehicles | `/tuktrack/v1/vehicles` | Vehicle registration and tracking |
+| Drivers | `/tuktrack/v1/drivers` | Driver records and license management |
+| Police Stations | `/tuktrack/v1/police-stations` | Station data and jurisdiction management |
+| Provinces | `/tuktrack/v1/provinces` | Province reference data |
+| Districts | `/tuktrack/v1/districts` | District reference data |
+| Tracking Devices | `/tuktrack/v1/tracking-devices` | GPS device management |
+| Location Pings | `/tuktrack/v1/location-pings` | GPS ping submission and retrieval |
+| Controllers | `/tuktrack/v1/assign-*` | Atomic multi-entity operations |

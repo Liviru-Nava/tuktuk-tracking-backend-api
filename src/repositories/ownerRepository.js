@@ -50,7 +50,7 @@ export async function findAllOwners({ limit, offset, ownerIdsToFilterBy, searchT
 
 export async function findOwnerById(ownerId) {
     return db('owners')
-        .where({ owner_id: ownerId })
+        .where({ owner_identity_no_hmac: ownerId })
         .select(ownerColumns)
         .first();
 }
@@ -70,7 +70,7 @@ export async function createOwner(newOwnerData) {
 
 export async function updateOwner(ownerId, fieldsToUpdate) {
     const [updatedOwner] = await db('owners')
-        .where({ owner_id: ownerId })
+        .where({ owner_identity_no: ownerId })
         .update({ ...fieldsToUpdate, updated_time: db.fn.now() })
         .returning(ownerColumns);
     return updatedOwner;
@@ -78,7 +78,7 @@ export async function updateOwner(ownerId, fieldsToUpdate) {
 
 export async function deactivateOwner(ownerId) {
     const [deactivatedOwner] = await db('owners')
-        .where({ owner_id: ownerId })
+        .where({ owner_identity_no: ownerId })
         .update({ status: 'INACTIVE', updated_time: db.fn.now() })
         .returning(ownerColumns);
     return deactivatedOwner;
@@ -101,7 +101,6 @@ export async function findVehiclesByOwnerId(ownerId, { limit, offset, districtId
         .select(
             'vehicles.vehicle_id',
             'vehicles.license_plate_no',
-            'vehicles.vehicle_reg_no',
             'vehicles.make_of_vehicle',
             'vehicles.model_of_vehicle',
             'vehicles.manufacture_year',

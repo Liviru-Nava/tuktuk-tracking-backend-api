@@ -1,6 +1,7 @@
 //Business logic layer for district endpoints
 
 import * as districtRepo from '../repositories/districtRepository.js';
+import * as provinceRepo from '../repositories/provinceRepository.js';
 import db from '../config/knex.js';
 import { getPaginationParams, buildCollection } from '../utils/paginationUtils.js';
 
@@ -57,7 +58,7 @@ export async function getAllDistricts(query, user) {
   if (filters.district_id) {
     const district = await districtRepo.findDistrictById(filters.district_id);
     const items    = district ? [district] : [];
-    return buildCollection('/api/v1/districts', offset, limit, items.length, items);
+    return buildCollection('/tuktrack/v1/districts', offset, limit, items.length, items);
   }
 
   // NATIONAL or PROVINCIAL — query with province filter if applicable
@@ -67,7 +68,7 @@ export async function getAllDistricts(query, user) {
   ]);
 
   return buildCollection(
-    '/api/v1/districts',
+    '/tuktrack/v1/districts',
     offset,
     limit,
     total,
@@ -94,29 +95,45 @@ export async function getDistrictById(districtId, user) {
   return district;
 }
 
-export async function getOfficesByDistrict(districtId, query, user) {
-  if (!districtId) {
-    throw { statusCode: 400, message: 'District ID is required' };
+export async function getDistrictsByProvince(provinceId, query, user) {
+  if (!provinceId) {
+    throw { statusCode: 400, message: 'Province ID is required' };
   }
 
-  const district = await districtRepo.findDistrictById(districtId);
-  if (!district) {
-    throw { statusCode: 404, message: 'District not found' };
+  const province = await provinceRepo.findProvinceById(provinceId);
+  if (!province) {
+    throw { statusCode: 404, message: 'Province not found' };
   }
 
-  await checkDistrictAccess(user, districtId, district.province_id);
+  // Re-use province-layer helper via the shared resolveAllowedProvinceId logic:
+  // a non-national user may only see districts inside their own allowed province.
+  if (user.jurisdiction_type !== 'NATIONAL') {
+    let allowedProvinceId;
+
+    if (user.jurisdiction_type === 'PROVINCIAL') {
+      allowedProvinceId = user.jurisdiction_ref_id;
+    } else {
+      // DISTRICT or STATION — derive their province from their district
+      const row = await districtRepo.findDistrictById(user.jurisdiction_ref_id);
+      allowedProvinceId = row?.province_id ?? null;
+    }
+
+    if (allowedProvinceId && province.province_id !== allowedProvinceId) {
+      throw { statusCode: 403, message: 'You do not have access to this province' };
+    }
+  }
 
   const { limit, offset } = getPaginationParams(query);
-  const [offices, total] = await Promise.all([
-    districtRepo.findOfficesByDistrictId(districtId, { limit, offset }),
-    districtRepo.countOfficesByDistrictId(districtId),
+  const [districts, total] = await Promise.all([
+    districtRepo.findDistrictsByProvinceId(provinceId, { limit, offset }),
+    districtRepo.countDistrictsByProvinceId(provinceId),
   ]);
 
   return {
-    district,
+    province,
     collection: buildCollection(
-      `/api/v1/districts/${districtId}/offices`,
-      offset, limit, total, offices,
+      `/tuktrack/v1/provinces/${provinceId}/districts`,
+      offset, limit, total, districts,
     ),
   };
 }

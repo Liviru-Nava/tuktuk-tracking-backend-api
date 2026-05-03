@@ -18,6 +18,7 @@ await knex.schema.createTable('drivers', (table) => {
     table.string('driver_contact_no', 500).nullable();
     table.text('address').nullable();
     table.string('driver_license_no', 500).notNullable().unique();
+    table.string('driver_license_no_hmac', 64).notNullable().unique();
     table.date('license_expiry_date').notNullable();
     table.specificType('status', 'driver_status').notNullable().defaultTo('ACTIVE');
     table.timestamp('created_time', { useTz: true }).notNullable().defaultTo(knex.fn.now());

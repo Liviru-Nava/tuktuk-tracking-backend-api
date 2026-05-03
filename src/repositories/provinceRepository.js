@@ -40,27 +40,3 @@ export async function findProvinceById(provinceId) {
     )
     .first();
 }
-
-// Get all districts belonging to a province
-export async function findDistrictsByProvinceId(provinceId, { limit, offset } = {}) {
-  return db('districts')
-    .where({ province_id: provinceId })
-    .select(
-      'district_id',
-      'province_id',
-      'district_name',
-      'district_code',
-      'created_time',
-    )
-    .orderBy('district_name', 'asc')
-    .limit(limit)
-    .offset(offset);
-}
-
-export async function countDistrictsByProvinceId(provinceId) {
-  const result = await db('districts')
-    .where({ province_id: provinceId })
-    .count('district_id as count')
-    .first();
-  return parseInt(result.count);
-}

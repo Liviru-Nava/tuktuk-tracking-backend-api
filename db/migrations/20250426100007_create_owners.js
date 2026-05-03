@@ -11,6 +11,7 @@ export async function up(knex) {
     table.uuid('owner_id').primary().defaultTo(knex.raw('gen_random_uuid()'));
     table.string('owner_fullname', 200).notNullable();
     table.string('owner_identity_no', 500).notNullable().unique();
+    table.string('owner_identity_no_hmac', 64).notNullable().unique();
     table.specificType('owner_id_type', 'owner_id_type').notNullable();
     table.specificType('owner_gender', 'owner_gender').notNullable();
     table.string('owner_contact', 500).nullable();

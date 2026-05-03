@@ -1,7 +1,7 @@
 //All the routes for the office
 
 import { Router } from 'express';
-import * as officeController from '../controllers/officeControllers.js';
+import * as officeController from '../controllers/officeController.js';
 import { authenticate, requirePermission } from '../middleware/authMiddleware.js';
 
 const router = Router();
@@ -9,7 +9,7 @@ const router = Router();
 // Apply authentication to all office routes
 router.use(authenticate);
 
-// GET /api/v1/offices
+// GET /tuktrack/v1/offices
 // List all offices — scoped by jurisdiction
 router.get(
   '/',
@@ -17,7 +17,7 @@ router.get(
   officeController.getAllOffices,
 );
 
-// POST /api/v1/offices
+// POST /tuktrack/v1/offices
 // Create a new office
 router.post(
   '/',
@@ -25,7 +25,7 @@ router.post(
   officeController.createOffice,
 );
 
-// GET /api/v1/offices/:officeId
+// GET /tuktrack/v1/offices/:officeId
 // Get a specific office by ID
 router.get(
   '/:officeId',
@@ -33,7 +33,7 @@ router.get(
   officeController.getOfficeById,
 );
 
-// PUT /api/v1/offices/:officeId
+// PUT /tuktrack/v1/offices/:officeId
 // Update an office (office_name, office_address, office_contact only)
 router.put(
   '/:officeId',
@@ -41,7 +41,7 @@ router.put(
   officeController.updateOffice,
 );
 
-// DELETE /api/v1/offices/:officeId
+// DELETE /tuktrack/v1/offices/:officeId
 // Soft close — transitions status to CLOSED
 router.delete(
   '/:officeId',
@@ -49,7 +49,7 @@ router.delete(
   officeController.deleteOffice,
 );
 
-// GET /api/v1/offices/:officeId/users
+// GET /tuktrack/v1/offices/:officeId/users
 // List users assigned to this office
 router.get(
   '/:officeId/users',

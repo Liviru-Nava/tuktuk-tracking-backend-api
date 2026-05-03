@@ -148,7 +148,7 @@ export async function getAllUsers(queryParams, requestingUser) {
     const decryptedListOfUsers = listOfUsers.map(decryptUserContactNo);
 
     return buildCollection(
-        '/api/v1/users',
+        '/tuktrack/v1/users',
         offset,
         limit,
         totalUserCount,
