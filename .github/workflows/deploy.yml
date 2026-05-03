@@ -60,9 +60,10 @@ jobs:
               # Step 1 — Generate encrypted seed files from plain data
               # These scripts read .env for ENCRYPTION_KEY and write to db/seeds/
               echo "Generating encrypted seed files..."
-              node scripts/encrypt_users_seed.js
-              node scripts/encrypt_owners_seed.js
+              node scripts/encrypt_devices_seed.js
               node scripts/encrypt_drivers_seed.js
+              node scripts/encrypt_owners_seed.js
+              node scripts/encrypt_users_seed.js
 
               # Step 2 — Run all seed files in numeric order
               # Knex picks up the generated files automatically
