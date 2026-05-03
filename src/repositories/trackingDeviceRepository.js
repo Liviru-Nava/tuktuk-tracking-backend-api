@@ -83,13 +83,13 @@ export async function createDevice(newDeviceData) {
     return createdDevice;
 }
 
-export async function updateDevice(deviceId, fieldsToUpdate) {
-    const [updatedDevice] = await db('tracking_devices')
-        .where({ device_serial_no: deviceId })
-        .update({ ...fieldsToUpdate, updated_time: db.fn.now() })
-        .returning(deviceColumns);
-    return updatedDevice;
-}
+// export async function updateDevice(deviceId, fieldsToUpdate) {
+//     const [updatedDevice] = await db('tracking_devices')
+//         .where({ device_serial_no: deviceId })
+//         .update({ ...fieldsToUpdate, updated_time: db.fn.now() })
+//         .returning(deviceColumns);
+//     return updatedDevice;
+// }
 
 export async function changeDeviceStatus(deviceId, newStatus) {
     const [updatedDevice] = await db('tracking_devices')
@@ -111,8 +111,7 @@ export async function findVehicleAssignedToDevice(deviceId) {
             'vehicles.make_of_vehicle',
             'vehicles.model_of_vehicle',
             'vehicles.status as vehicle_status',
-            'districts.district_name',
-            'provinces.province_name',
+            'districts.district_id',
         )
         .first();
 }

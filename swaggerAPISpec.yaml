@@ -3015,44 +3015,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-    put:
-      tags: [Tracking Devices]
-      summary: Update a tracking device
-      description: Only device_serial_no is editable. Blocked if status is DECOMMISSIONED.
-      parameters:
-        - name: deviceSerialNo
-          in: path
-          required: true
-          schema:
-            type: string
-            
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                device_serial_no:
-                  type: string
-      responses:
-        '200':
-          description: Device updated
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/SuccessResponse'
-                  - type: object
-                    properties:
-                      data:
-                        $ref: '#/components/schemas/TrackingDevice'
-        '409':
-          description: Device is decommissioned or serial no already in use
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
     delete:
       tags: [Tracking Devices]
       summary: Decommission a tracking device (soft delete)
@@ -3114,70 +3076,70 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
 
-  /tracking-devices/{deviceSerialNo}/location-pings:
-    get:
-      tags: [Tracking Devices]
-      summary: Get ping history for a tracking device
-      description: >
-        Full ping history for a specific device.
-        Supports optional start_time / end_time time-window filtering.
-        Requires location:view_history.
-      parameters:
-        - name: deviceSerialNo
-          in: path
-          required: true
-          schema:
-            type: string
+  # /tracking-devices/{deviceSerialNo}/location-pings:
+  #   get:
+  #     tags: [Tracking Devices]
+  #     summary: Get ping history for a tracking device
+  #     description: >
+  #       Full ping history for a specific device.
+  #       Supports optional start_time / end_time time-window filtering.
+  #       Requires location:view_history.
+  #     parameters:
+  #       - name: deviceSerialNo
+  #         in: path
+  #         required: true
+  #         schema:
+  #           type: string
             
-        - name: start_time
-          in: query
-          schema:
-            type: string
-            format: date-time
-            example: "2025-04-19T00:00:00Z"
-        - name: end_time
-          in: query
-          schema:
-            type: string
-            format: date-time
-            example: "2025-04-26T23:59:59Z"
-        - name: limit
-          in: query
-          description: Maximum number of items to return (1–100, default 10)
-          schema:
-            type: integer
-            default: 10
-            minimum: 1
-            maximum: 100
-        - name: offset
-          in: query
-          description: Zero-based index of the first item to return (default 0)
-          schema:
-            type: integer
-            default: 0
-            minimum: 0
-      responses:
-        '200':
-          description: Ping history retrieved (newest first)
-          content:
-            application/json:
-              schema:
-                allOf:
-                  - $ref: '#/components/schemas/CollectionResponse'
-                  - type: object
-                    properties:
-                      collection:
-                        properties:
-                          items:
-                            type: array
-                            items:
-                              $ref: '#/components/schemas/LocationPing'
-        '404':
-          description: Device not found
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
+  #       - name: start_time
+  #         in: query
+  #         schema:
+  #           type: string
+  #           format: date-time
+  #           example: "2025-04-19T00:00:00Z"
+  #       - name: end_time
+  #         in: query
+  #         schema:
+  #           type: string
+  #           format: date-time
+  #           example: "2025-04-26T23:59:59Z"
+  #       - name: limit
+  #         in: query
+  #         description: Maximum number of items to return (1–100, default 10)
+  #         schema:
+  #           type: integer
+  #           default: 10
+  #           minimum: 1
+  #           maximum: 100
+  #       - name: offset
+  #         in: query
+  #         description: Zero-based index of the first item to return (default 0)
+  #         schema:
+  #           type: integer
+  #           default: 0
+  #           minimum: 0
+  #     responses:
+  #       '200':
+  #         description: Ping history retrieved (newest first)
+  #         content:
+  #           application/json:
+  #             schema:
+  #               allOf:
+  #                 - $ref: '#/components/schemas/CollectionResponse'
+  #                 - type: object
+  #                   properties:
+  #                     collection:
+  #                       properties:
+  #                         items:
+  #                           type: array
+  #                           items:
+  #                             $ref: '#/components/schemas/LocationPing'
+  #       '404':
+  #         description: Device not found
+  #         content:
+  #           application/json:
+  #             schema:
+  #               $ref: '#/components/schemas/ErrorResponse'
 
   /tracking-devices/{deviceSerialNo}/change-status:
     post:

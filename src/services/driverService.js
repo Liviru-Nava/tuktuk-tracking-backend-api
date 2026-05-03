@@ -218,7 +218,7 @@ export async function createDriver(requestBody, requestingUser) {
 
 export async function updateDriver(driverId, requestBody, requestingUser) {
     if (!driverId) {
-        throw { statusCode: 400, message: 'Driver ID is required' };
+        throw { statusCode: 400, message: 'Driver License is required' };
     }
 
     const driverHmac = hmac(driverId.trim().toUpperCase());
@@ -344,7 +344,7 @@ export async function suspendDriver(driverId, requestingUser) {
         throw { statusCode: 409, message: 'Driver is blacklisted. Use change-status to manage blacklisted drivers.' };
     }
 
-    const numberOfActiveAssignments = await driverRepository.countActiveAssignmentsByDriverId(driverId);
+    const numberOfActiveAssignments = await driverRepository.countActiveAssignmentsByDriverId(existingDriver.driver_id);
     if (numberOfActiveAssignments > 0) {
         throw {
             statusCode: 409,

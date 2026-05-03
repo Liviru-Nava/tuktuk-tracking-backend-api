@@ -26,11 +26,11 @@ trackingDeviceRouter.get(
     trackingDeviceController.getDeviceById,
 );
 
-trackingDeviceRouter.put(
-    '/:deviceSerialNo',
-    requirePermission('device:edit'),
-    trackingDeviceController.updateDevice,
-);
+// trackingDeviceRouter.put(
+//     '/:deviceSerialNo',
+//     requirePermission('device:edit'),
+//     trackingDeviceController.updateDevice,
+// );
 
 // soft decommission
 trackingDeviceRouter.delete(
@@ -47,11 +47,11 @@ trackingDeviceRouter.get(
 );
 
 // full ping history for this device with optional time window
-trackingDeviceRouter.get(
-    '/:deviceSerialNo/location-pings',
-    requirePermission('location:view_history'),
-    trackingDeviceController.getDeviceLocationPings,
-);
+// trackingDeviceRouter.get(
+//     '/:deviceSerialNo/location-pings',
+//     requirePermission('location:view_history'),
+//     trackingDeviceController.getDeviceLocationPings,
+// );
 
 // explicit status transitions — ACTIVE, INACTIVE, FAULTY, DECOMMISSIONED
 trackingDeviceRouter.post(

@@ -36,20 +36,20 @@ export async function createDevice(request, response) {
     }
 }
 
-export async function updateDevice(request, response) {
-    try {
-        const updatedDevice = await trackingDeviceService.updateDevice(
-            request.params.deviceSerialNo,
-            request.body,
-            request.user,
-        );
-        return sendSuccess(response, 200, 'Tracking device updated successfully', updatedDevice);
-    } catch (error) {
-        if (error.statusCode) return sendError(response, error.statusCode, error.message);
-        console.error('[DEVICE] updateDevice error:', error);
-        return sendError(response, 500, 'Internal server error');
-    }
-}
+// export async function updateDevice(request, response) {
+//     try {
+//         const updatedDevice = await trackingDeviceService.updateDevice(
+//             request.params.deviceSerialNo,
+//             request.body,
+//             request.user,
+//         );
+//         return sendSuccess(response, 200, 'Tracking device updated successfully', updatedDevice);
+//     } catch (error) {
+//         if (error.statusCode) return sendError(response, error.statusCode, error.message);
+//         console.error('[DEVICE] updateDevice error:', error);
+//         return sendError(response, 500, 'Internal server error');
+//     }
+// }
 
 export async function decommissionDevice(request, response) {
     try {
@@ -79,20 +79,20 @@ export async function getDeviceStatusComposite(request, response) {
     }
 }
 
-export async function getDeviceLocationPings(request, response) {
-    try {
-        const collectionOfPings = await trackingDeviceService.getDeviceLocationPings(
-            request.params.deviceSerialNo,
-            request.query,
-            request.user,
-        );
-        return sendCollection(response, 200, 'Device location pings retrieved successfully', collectionOfPings);
-    } catch (error) {
-        if (error.statusCode) return sendError(response, error.statusCode, error.message);
-        console.error('[DEVICE] getDeviceLocationPings error:', error);
-        return sendError(response, 500, 'Internal server error');
-    }
-}
+// export async function getDeviceLocationPings(request, response) {
+//     try {
+//         const collectionOfPings = await trackingDeviceService.getDeviceLocationPings(
+//             request.params.deviceSerialNo,
+//             request.query,
+//             request.user,
+//         );
+//         return sendCollection(response, 200, 'Device location pings retrieved successfully', collectionOfPings);
+//     } catch (error) {
+//         if (error.statusCode) return sendError(response, error.statusCode, error.message);
+//         console.error('[DEVICE] getDeviceLocationPings error:', error);
+//         return sendError(response, 500, 'Internal server error');
+//     }
+// }
 
 export async function changeDeviceStatus(request, response) {
     try {

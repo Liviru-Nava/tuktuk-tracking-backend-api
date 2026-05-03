@@ -163,48 +163,48 @@ export async function createDevice(requestBody, requestingUser) {
     };
 }
 
-export async function updateDevice(deviceId, requestBody, requestingUser) {
-    if (!deviceId) {
-        throw { statusCode: 400, message: 'Device ID is required' };
-    }
+// export async function updateDevice(deviceId, requestBody, requestingUser) {
+//     if (!deviceId) {
+//         throw { statusCode: 400, message: 'Device ID is required' };
+//     }
 
-    const existingDevice = await trackingDeviceRepository.findDeviceById(deviceId);
-    if (!existingDevice) {
-        throw { statusCode: 404, message: 'Tracking device not found' };
-    }
+//     const existingDevice = await trackingDeviceRepository.findDeviceById(deviceId);
+//     if (!existingDevice) {
+//         throw { statusCode: 404, message: 'Tracking device not found' };
+//     }
 
-    await checkDeviceAccess(requestingUser, deviceId);
+//     await checkDeviceAccess(requestingUser, deviceId);
 
-    if (existingDevice.device_status === 'DECOMMISSIONED') {
-        throw { statusCode: 409, message: 'Cannot update a decommissioned device' };
-    }
+//     if (existingDevice.device_status === 'DECOMMISSIONED') {
+//         throw { statusCode: 409, message: 'Cannot update a decommissioned device' };
+//     }
 
-    // only device_serial_no is editable — covers data entry mistakes
-    const { device_serial_no } = requestBody;
+//     // only device_serial_no is editable — covers data entry mistakes
+//     const { device_serial_no } = requestBody;
 
-    if (!device_serial_no || !device_serial_no.trim()) {
-        throw {
-            statusCode: 400,
-            message: 'device_serial_no is the only editable field and it cannot be empty',
-        };
-    }
+//     if (!device_serial_no || !device_serial_no.trim()) {
+//         throw {
+//             statusCode: 400,
+//             message: 'device_serial_no is the only editable field and it cannot be empty',
+//         };
+//     }
 
-    // make sure the new serial number is not already taken by another device
-    const duplicateDevice = await trackingDeviceRepository.findDeviceBySerialNo(
-        device_serial_no.trim().toUpperCase()
-    );
+//     // make sure the new serial number is not already taken by another device
+//     const duplicateDevice = await trackingDeviceRepository.findDeviceBySerialNo(
+//         device_serial_no.trim().toUpperCase()
+//     );
 
-    if (duplicateDevice && duplicateDevice.device_id !== deviceId) {
-        throw {
-            statusCode: 409,
-            message: `Serial number '${device_serial_no}' is already in use by another device`,
-        };
-    }
+//     if (duplicateDevice && duplicateDevice.device_id !== deviceId) {
+//         throw {
+//             statusCode: 409,
+//             message: `Serial number '${device_serial_no}' is already in use by another device`,
+//         };
+//     }
 
-    return trackingDeviceRepository.updateDevice(deviceId, {
-        device_serial_no: device_serial_no.trim().toUpperCase(),
-    });
-}
+//     return trackingDeviceRepository.updateDevice(deviceId, {
+//         device_serial_no: device_serial_no.trim().toUpperCase(),
+//     });
+// }
 
 export async function decommissionDevice(deviceId, requestingUser) {
     if (!deviceId) {
@@ -266,37 +266,37 @@ export async function getDeviceStatusComposite(deviceId, requestingUser) {
     };
 }
 
-export async function getDeviceLocationPings(deviceId, queryParams, requestingUser) {
-    if (!deviceId) {
-        throw { statusCode: 400, message: 'Device ID is required' };
-    }
+// export async function getDeviceLocationPings(deviceId, queryParams, requestingUser) {
+//     if (!deviceId) {
+//         throw { statusCode: 400, message: 'Device ID is required' };
+//     }
 
-    const foundDevice = await trackingDeviceRepository.findDeviceById(deviceId);
-    if (!foundDevice) {
-        throw { statusCode: 404, message: 'Tracking device not found' };
-    }
+//     const foundDevice = await trackingDeviceRepository.findDeviceById(deviceId);
+//     if (!foundDevice) {
+//         throw { statusCode: 404, message: 'Tracking device not found' };
+//     }
 
-    await checkDeviceAccess(requestingUser, deviceId);
+//     await checkDeviceAccess(requestingUser, deviceId);
 
-    const { limit, offset } = getPaginationParams(queryParams);
+//     const { limit, offset } = getPaginationParams(queryParams);
 
-    const startTime = queryParams.start_time || null;
-    const endTime   = queryParams.end_time   || null;
+//     const startTime = queryParams.start_time || null;
+//     const endTime   = queryParams.end_time   || null;
 
-    const { listOfPings, totalPingCount } = await trackingDeviceRepository.findPingsByDeviceId(
-        foundDevice.device_id,
-        { limit, offset, startTime, endTime }
-    );
+//     const { listOfPings, totalPingCount } = await trackingDeviceRepository.findPingsByDeviceId(
+//         foundDevice.device_id,
+//         { limit, offset, startTime, endTime }
+//     );
 
-    return buildCollection(
-        `/tuktrack/v1/tracking-devices/${deviceId}/location-pings`,
-        offset,
-        limit,
-        totalPingCount,
-        listOfPings,
-        startTime || endTime ? { start_time: startTime, end_time: endTime } : {},
-    );
-}
+//     return buildCollection(
+//         `/tuktrack/v1/tracking-devices/${deviceId}/location-pings`,
+//         offset,
+//         limit,
+//         totalPingCount,
+//         listOfPings,
+//         startTime || endTime ? { start_time: startTime, end_time: endTime } : {},
+//     );
+// }
 
 export async function changeDeviceStatus(deviceId, requestBody, requestingUser) {
     if (!deviceId) {
