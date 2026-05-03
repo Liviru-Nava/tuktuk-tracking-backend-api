@@ -124,9 +124,9 @@ export async function getAllOffices(query, user) {
     const filters = {};
 
     //query param filters
-    if (query.status)            filters.status            = query.status;
-    if (query.office_type)       filters.office_type       = query.office_type;
-    if (query.jurisdiction_type) filters.jurisdiction_type = query.jurisdiction_type;
+    if (query.status) filters.status = query.status;
+    if (query.officeType) filters.officeType = query.officeType;
+    if (query.jurisdictionType) filters.jurisdictionType = query.jurisdictionType;
 
     // Handle provincial filter
     if (jurisdictionFilters._provincial_filter) {
@@ -147,8 +147,8 @@ export async function getAllOffices(query, user) {
 
         // Apply optional query filters on top
         if (filters.status)            baseQuery.where('status', filters.status);
-        if (filters.office_type)       baseQuery.where('office_type', filters.office_type);
-        if (filters.jurisdiction_type) baseQuery.where('jurisdiction_type', filters.jurisdiction_type);
+        if (filters.officeType)       baseQuery.where('office_type', filters.officeType);
+        if (filters.jurisdictionType) baseQuery.where('jurisdiction_type', filters.jurisdictionType);
 
         const countQuery = baseQuery.clone().clearSelect().count('office_id as count').first();
 

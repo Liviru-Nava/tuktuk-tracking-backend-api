@@ -84,7 +84,7 @@ export async function getAllDevices(queryParams, requestingUser) {
         offset,
         deviceIdsToFilterBy,
         searchTerm:   queryParams.search       || null,
-        deviceStatus: queryParams.device_status || null,
+        deviceStatus: queryParams.deviceStatus || null,
     });
 
     return buildCollection(

@@ -53,13 +53,13 @@ export async function getAllVehicles(queryParams, requestingUser) {
     }
 
     if (queryParams.status) filters.status = queryParams.status;
-    if (queryParams.district_id) filters.district_id = queryParams.district_id;
-    if (queryParams.fuel_type) filters.fuel_type = queryParams.fuel_type;
-    if (queryParams.make_of_vehicle) filters.make_of_vehicle = queryParams.make_of_vehicle;
-    if (queryParams.owner_id) filters.owner_id = queryParams.owner_id;
+    if (queryParams.districtId) filters.districtId = queryParams.districtId;
+    if (queryParams.fuelType) filters.fuelType = queryParams.fuelType;
+    if (queryParams.makeOfVehicle) filters.makeOfVehicle = queryParams.makeOfVehicle;
+    if (queryParams.ownerId) filters.ownerId = queryParams.ownerId;
 
-    if (queryParams.is_diplomatic !== undefined) {
-        filters.is_diplomatic = queryParams.is_diplomatic === 'true';
+    if (queryParams.isDiplomatic !== undefined) {
+        filters.is_diplomatic = queryParams.isDiplomatic === 'true';
     }
 
     const { listOfVehicles, totalVehicleCount } = await vehicleRepository.findAllVehicles({

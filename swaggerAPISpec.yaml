@@ -1293,7 +1293,7 @@ paths:
           schema:
             type: string
             enum: [ACTIVE, CLOSED]
-        - name: office_type
+        - name: officeType
           in: query
           schema:
             type: string
@@ -2067,27 +2067,27 @@ paths:
           schema:
             type: string
             enum: [ACTIVE, SUSPENDED, FLAGGED, DEREGISTERED]
-        - name: district_id
+        - name: districtId
           in: query
           schema:
             type: string
             
-        - name: fuel_type
+        - name: fuelType
           in: query
           schema:
             type: string
             enum: [PETROL, CNG, ELECTRIC]
-        - name: make_of_vehicle
+        - name: makeOfVehicle
           in: query
           description: Partial match (case-insensitive)
           schema:
             type: string
-        - name: owner_id
+        - name: ownerId
           in: query
           schema:
             type: string
             
-        - name: is_diplomatic
+        - name: isDiplomatic
           in: query
           schema:
             type: boolean
@@ -2902,7 +2902,7 @@ paths:
           description: Partial match on device_serial_no
           schema:
             type: string
-        - name: device_status
+        - name: deviceStatus
           in: query
           schema:
             type: string
