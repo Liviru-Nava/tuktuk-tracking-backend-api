@@ -87,3 +87,8 @@ The API is structured around the following resource groups:
 | Tracking Devices | `/tuktrack/v1/tracking-devices` | GPS device management |
 | Location Pings | `/tuktrack/v1/location-pings` | GPS ping submission and retrieval |
 | Controllers | `/tuktrack/v1/assign-*` | Atomic multi-entity operations |
+
+
+### Sample Data
+The sample data that was seeded into the database:
+https://drive.google.com/file/d/1SmIpoVtVDz841tzAh-3OzTt1fYCYcmrG/view?usp=sharing
