@@ -74,8 +74,9 @@ export async function getOwnerById(ownerId, requestingUser) {
         throw { statusCode: 400, message: 'Owner ID is required' };
     }
 
-    const encryptedOwnerId = hmac(ownerId.trim().toUpperCase());
-    const foundOwner = await ownerRepository.findOwnerById(encryptedOwnerId);
+    // Repository findOwnerById looks up by owner_identity_no_hmac.
+    const ownerHmac = hmac(ownerId.trim().toUpperCase());
+    const foundOwner = await ownerRepository.findOwnerById(ownerHmac);
     if (!foundOwner) {
         throw { statusCode: 404, message: 'Owner not found' };
     }
@@ -128,9 +129,11 @@ export async function createOwner(requestBody, requestingUser) {
         };
     }
 
-    const encryptedIdentityNo = encrypt(owner_identity_no.trim().toUpperCase());
+    const normalised        = owner_identity_no.trim().toUpperCase();
+    const identityNoHmac    = hmac(normalised);
+    const identityNoEncrypt = encrypt(normalised);
 
-    const existingOwnerWithSameId = await ownerRepository.findOwnerByIdentityNo(encryptedIdentityNo);
+    const existingOwnerWithSameId = await ownerRepository.findOwnerByIdentityNo(identityNoHmac);
     if (existingOwnerWithSameId) {
         throw {
             statusCode: 409,
@@ -139,19 +142,20 @@ export async function createOwner(requestBody, requestingUser) {
     }
 
     const newOwner = await ownerRepository.createOwner({
-        owner_id:          uuidv4(),
-        owner_fullname:    owner_fullname.trim(),
-        owner_identity_no: encryptedIdentityNo,
+        owner_id:               uuidv4(),
+        owner_fullname:         owner_fullname.trim(),
+        owner_identity_no:      identityNoEncrypt,       // AES-256-GCM encrypted value
+        owner_identity_no_hmac: identityNoHmac,          // HMAC for lookups — was missing entirely
         owner_id_type,
         owner_gender,
-        owner_contact:     owner_contact ? encrypt(owner_contact.trim()) : null,
-        owner_address:     owner_address ? encrypt(owner_address.trim()) : null,
-        status:            'ACTIVE',
+        owner_contact:          owner_contact ? encrypt(owner_contact.trim()) : null,
+        owner_address:          owner_address ? encrypt(owner_address.trim()) : null,
+        status:                 'ACTIVE',
     });
 
     return {
         ...newOwner,
-        owner_identity_no: owner_identity_no.trim().toUpperCase(),
+        owner_identity_no: normalised,          // return plain-text to caller
         owner_contact:     owner_contact || null,
         owner_address:     owner_address || null,
     };
@@ -162,8 +166,8 @@ export async function updateOwner(ownerId, requestBody, requestingUser) {
         throw { statusCode: 400, message: 'Owner ID is required' };
     }
 
-    const encryptedOwnerId = encrypt(ownerId.trim().toUpperCase());
-    const existingOwner = await ownerRepository.findOwnerById(encryptedOwnerId);
+    const ownerHmac     = hmac(ownerId.trim().toUpperCase());
+    const existingOwner = await ownerRepository.findOwnerById(ownerHmac);
     if (!existingOwner) {
         throw { statusCode: 404, message: 'Owner not found' };
     }
@@ -223,7 +227,9 @@ export async function updateOwner(ownerId, requestBody, requestingUser) {
         };
     }
 
-    const updatedOwner = await ownerRepository.updateOwner(encryptedOwnerId, fieldsToUpdate);
+    // Repository updateOwner uses owner_identity_no (encrypted column) for its WHERE clause,
+    // so pass the encrypted value from the record we already fetched.
+    const updatedOwner = await ownerRepository.updateOwner(existingOwner.owner_identity_no, fieldsToUpdate);
 
     return {
         ...updatedOwner,
@@ -242,8 +248,8 @@ export async function deactivateOwner(ownerId, requestingUser) {
         throw { statusCode: 400, message: 'Owner ID is required' };
     }
 
-    const encryptedOwnerId = encrypt(ownerId.trim().toUpperCase());
-    const existingOwner = await ownerRepository.findOwnerById(encryptedOwnerId);
+    const ownerHmac     = hmac(ownerId.trim().toUpperCase());
+    const existingOwner = await ownerRepository.findOwnerById(ownerHmac);
     if (!existingOwner) {
         throw { statusCode: 404, message: 'Owner not found' };
     }
@@ -270,7 +276,8 @@ export async function deactivateOwner(ownerId, requestingUser) {
         };
     }
 
-    return ownerRepository.deactivateOwner(encryptedOwnerId);
+    // Pass the already-fetched encrypted identity_no so the repository WHERE clause matches
+    return ownerRepository.deactivateOwner(existingOwner.owner_identity_no);
 }
 
 export async function getOwnerVehicles(ownerId, queryParams, requestingUser) {
@@ -278,8 +285,8 @@ export async function getOwnerVehicles(ownerId, queryParams, requestingUser) {
         throw { statusCode: 400, message: 'Owner ID is required' };
     }
 
-    const encryptedOwnerId = encrypt(ownerId.trim().toUpperCase());
-    const existingOwner = await ownerRepository.findOwnerById(encryptedOwnerId);
+    const ownerHmac     = hmac(ownerId.trim().toUpperCase());
+    const existingOwner = await ownerRepository.findOwnerById(ownerHmac);
     if (!existingOwner) {
         throw { statusCode: 404, message: 'Owner not found' };
     }

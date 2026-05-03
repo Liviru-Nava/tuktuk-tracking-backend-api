@@ -52,8 +52,6 @@ export async function findAllVehicles({ limit, offset, filters = {} }) {
         .join('provinces', 'districts.province_id', 'provinces.province_id')
         .select(
             ...basicVehicleColumns,
-            'districts.district_name',
-            'provinces.province_name',
         )
         .orderBy('vehicles.license_plate_no', 'asc');
 
@@ -80,8 +78,6 @@ export async function findVehicleById(vehicleId) {
         .where('vehicles.license_plate_no', vehicleId)
         .select(
             ...basicVehicleColumns,
-            'districts.district_name',
-            'provinces.province_name',
         )
         .first();
 }

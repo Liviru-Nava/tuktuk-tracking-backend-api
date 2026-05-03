@@ -57,7 +57,7 @@ export async function findOwnerById(ownerId) {
 
 export async function findOwnerByIdentityNo(identityNo) {
     return db('owners')
-        .where({ owner_identity_no: identityNo })
+        .where({ owner_identity_no_hmac: identityNo })
         .first();
 }
 
