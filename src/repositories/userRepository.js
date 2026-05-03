@@ -17,12 +17,8 @@ export async function getAllUsers({ limit, offset, filters }) {
             'users.last_login_time',
             'users.created_time',
             'users.updated_time',
-            'roles.role_name',
-            'roles.user_management_scope',
-            'offices.office_id',
-            'offices.office_name',
-            'offices.jurisdiction_type',
-            'offices.jurisdiction_ref_id',
+            'users.office_id',
+            'users.role_id',
         )
         .orderBy('users.fullname', 'asc');
 
@@ -77,14 +73,8 @@ export async function getUserById(userId) {
             'users.last_login_time',
             'users.created_time',
             'users.updated_time',
-            'roles.role_id',
-            'roles.role_name',
-            'roles.permissions',
-            'roles.user_management_scope',
-            'offices.office_id',
-            'offices.office_name',
-            'offices.jurisdiction_type',
-            'offices.jurisdiction_ref_id',
+            'users.role_id',
+            'users.office_id',
         )
         .first();
 }
