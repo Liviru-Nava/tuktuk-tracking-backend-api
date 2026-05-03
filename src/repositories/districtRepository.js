@@ -19,8 +19,6 @@ export async function findAllDistricts({ limit, offset, province_id } = {}) {
     .select(
       'districts.district_id',
       'districts.province_id',
-      'provinces.province_name',
-      'provinces.province_code',
       'districts.district_name',
       'districts.district_code',
       'districts.created_time',
@@ -41,8 +39,6 @@ export async function findDistrictById(districtId) {
     .select(
       'districts.district_id',
       'districts.province_id',
-      'provinces.province_name',
-      'provinces.province_code',
       'districts.district_name',
       'districts.district_code',
       'districts.created_time',

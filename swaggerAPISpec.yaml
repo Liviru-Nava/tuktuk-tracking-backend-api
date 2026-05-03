@@ -38,7 +38,7 @@ info:
     name: Government of Sri Lanka  Internal Use Only
 
 servers:
-  - url: http://43.205.28.67:3000/tuktrack/v1
+  - url: http://43.205.28.67/tuktrack/v1
     description: Production  AWS EC2 (ap-south-1)
   - url: http://localhost:3000/tuktrack/v1
     description: Local Development
