@@ -1216,5 +1216,6 @@ export async function seed(knex) {
     await knex('tracking_devices').insert(rows.slice(i, i + 50)).onConflict('device_id').ignore();
   }
 
+  //console
   console.log(`Tracking devices seeded: ${rows.length} records`);
 }
