@@ -135,3 +135,27 @@ export async function countActiveUsersByOfficeId(officeId) {
         .first();
     return parseInt(result.count);
 }
+
+// Get all offices in a district — scoped collection for GET /districts/:districtId/offices
+export async function findOfficesByDistrictId(districtId, { limit, offset } = {}) {
+  return db('offices')
+    .where({
+      jurisdiction_ref_id: districtId,
+      jurisdiction_type:   'DISTRICT',
+    })
+    .select(OFFICE_COLUMNS)
+    .orderBy('office_name', 'asc')
+    .limit(limit)
+    .offset(offset);
+}
+
+export async function countOfficesByDistrictId(districtId) {
+  const result = await db('offices')
+    .where({
+      jurisdiction_ref_id: districtId,
+      jurisdiction_type:   'DISTRICT',
+    })
+    .count('office_id as count')
+    .first();
+  return parseInt(result.count);
+}

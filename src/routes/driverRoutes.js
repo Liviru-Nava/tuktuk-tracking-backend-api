@@ -21,27 +21,27 @@ driverRouter.post(
 );
 
 driverRouter.get(
-    '/:driverId',
+    '/:driverLicenseNo',
     requirePermission('driver:view'),
     driverController.getDriverById,
 );
 
 driverRouter.put(
-    '/:driverId',
+    '/:driverLicenseNo',
     requirePermission('driver:edit'),
     driverController.updateDriver,
 );
 
 // soft suspend — home jurisdiction only
 driverRouter.delete(
-    '/:driverId',
+    '/:driverLicenseNo',
     requirePermission('driver:delete'),
     driverController.suspendDriver,
 );
 
 // explicit status transition — ACTIVE, SUSPENDED, BLACKLISTED
 driverRouter.post(
-    '/:driverId/change-status',
+    '/:driverLicenseNo/change-status',
     requirePermission('driver:change_status'),
     driverController.changeDriverStatus,
 );

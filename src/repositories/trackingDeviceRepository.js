@@ -44,7 +44,7 @@ export async function findAllDevices({ limit, offset, deviceIdsToFilterBy, searc
 
 export async function findDeviceById(deviceId) {
     return db('tracking_devices')
-        .where({ device_id: deviceId })
+        .where({ device_serial_no: deviceId })
         .select(deviceColumns)
         .first();
 }
@@ -52,6 +52,27 @@ export async function findDeviceById(deviceId) {
 export async function findDeviceBySerialNo(deviceSerialNo) {
     return db('tracking_devices')
         .where({ device_serial_no: deviceSerialNo })
+        .first();
+}
+
+// Looks up a device by the HMAC of its firmware token.
+// Used during location ping auth — the device sends its plain-text token,
+// the service hashes it, and this function resolves the device record.
+// Finds the highest FIRMTUKTUK sequence number currently stored.
+// Used by the service to determine the next token to issue.
+// Returns a plain integer (e.g. 12 for FIRMTUKTUK0012) or null if none exist yet.
+export async function getHighestTokenSequence() {
+    const result = await db('tracking_devices')
+        .whereNotNull('device_token_hash')
+        .count('device_id as total')
+        .first();
+    return result ? parseInt(result.total) : 0;
+}
+
+export async function findDeviceByTokenHash(tokenHash) {
+    return db('tracking_devices')
+        .where({ device_token_hash: tokenHash })
+        .select(deviceColumns)
         .first();
 }
 
@@ -64,7 +85,7 @@ export async function createDevice(newDeviceData) {
 
 export async function updateDevice(deviceId, fieldsToUpdate) {
     const [updatedDevice] = await db('tracking_devices')
-        .where({ device_id: deviceId })
+        .where({ device_serial_no: deviceId })
         .update({ ...fieldsToUpdate, updated_time: db.fn.now() })
         .returning(deviceColumns);
     return updatedDevice;
@@ -72,7 +93,7 @@ export async function updateDevice(deviceId, fieldsToUpdate) {
 
 export async function changeDeviceStatus(deviceId, newStatus) {
     const [updatedDevice] = await db('tracking_devices')
-        .where({ device_id: deviceId })
+        .where({ device_serial_no: deviceId })
         .update({ device_status: newStatus, updated_time: db.fn.now() })
         .returning(deviceColumns);
     return updatedDevice;
@@ -87,7 +108,6 @@ export async function findVehicleAssignedToDevice(deviceId) {
         .select(
             'vehicles.vehicle_id',
             'vehicles.license_plate_no',
-            'vehicles.vehicle_reg_no',
             'vehicles.make_of_vehicle',
             'vehicles.model_of_vehicle',
             'vehicles.status as vehicle_status',

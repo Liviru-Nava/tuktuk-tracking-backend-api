@@ -1,6 +1,6 @@
 // Handles HTTP layer only and parses request, calls service, sends response.
 
-import * as authService from '../services/authServices.js';
+import * as authService from '../services/authService.js';
 import { sendSuccess, sendError } from '../utils/responseUtils.js';
 import { getRefreshTokenExpiryMaxAge } from '../utils/jwtUtils.js';
 import dotenv from 'dotenv';

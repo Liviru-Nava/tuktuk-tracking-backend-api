@@ -67,6 +67,26 @@ export async function deleteOffice(req, res) {
     }
 }
 
+// scoped collection — GET /districts/:districtId/offices
+export async function getOfficesByDistrict(req, res) {
+    try {
+        const result = await officeService.getOfficesByDistrict(
+            req.params.districtId,
+            req.query,
+            req.user,
+        );
+        return sendCollection(
+            res, 200,
+            `Offices in ${result.district.district_name} retrieved successfully`,
+            result.collection,
+        );
+    } catch (err) {
+        if (err.statusCode) return sendError(res, err.statusCode, err.message);
+        console.error('[OFFICE] getOfficesByDistrict error:', err);
+        return sendError(res, 500, 'Internal server error');
+    }
+}
+
 //get the users in an office
 export async function getOfficeUsers(req, res) {
     try {

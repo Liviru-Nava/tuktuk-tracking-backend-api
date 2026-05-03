@@ -3,6 +3,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import db from '../config/knex.js';
 import * as officeRepo  from '../repositories/officeRepository.js';
+import * as districtRepo from '../repositories/districtRepository.js';
 import { getPaginationParams, buildCollection } from '../utils/paginationUtils.js';
 
 //----------Functions to do jurisdiction filtering----------
@@ -158,7 +159,7 @@ export async function getAllOffices(query, user) {
 
         const total = parseInt(countResult.count);
 
-        return buildCollection('/api/v1/offices', offset, limit, total, offices, filters);
+        return buildCollection('/tuktrack/v1/offices', offset, limit, total, offices, filters);
     }
 
     // Distrcit/station and national filers
@@ -171,7 +172,7 @@ export async function getAllOffices(query, user) {
         officeRepo.countOffices(filters),
     ]);
 
-    return buildCollection('/api/v1/offices', offset, limit, total, offices, filters);
+    return buildCollection('/tuktrack/v1/offices', offset, limit, total, offices, filters);
 }
 
 //function to get office by id
@@ -371,8 +372,50 @@ export async function getOfficeUsers(officeId, query, user) {
     return {
         office,
         collection: buildCollection(
-        `/api/v1/offices/${officeId}/users`,
+        `/tuktrack/v1/offices/${officeId}/users`,
         offset, limit, total, users,
+        ),
+    };
+}
+
+// Scoped collection — GET /districts/:districtId/offices
+// The district is the scope key; the response items are offices.
+export async function getOfficesByDistrict(districtId, query, user) {
+    if (!districtId) {
+        throw { statusCode: 400, message: 'District ID is required' };
+    }
+
+    const district = await districtRepo.findDistrictById(districtId);
+    if (!district) {
+        throw { statusCode: 404, message: 'District not found' };
+    }
+
+    // Re-use the existing office-layer jurisdiction check — a district/station
+    // user may only see offices inside their own district.
+    if (user.jurisdiction_type !== 'NATIONAL') {
+        if (user.jurisdiction_type === 'PROVINCIAL') {
+            if (district.province_id !== user.jurisdiction_ref_id) {
+                throw { statusCode: 403, message: 'You do not have access to this district' };
+            }
+        } else {
+            // DISTRICT or STATION
+            if (user.jurisdiction_ref_id !== districtId) {
+                throw { statusCode: 403, message: 'You do not have access to this district' };
+            }
+        }
+    }
+
+    const { limit, offset } = getPaginationParams(query);
+    const [offices, total] = await Promise.all([
+        officeRepo.findOfficesByDistrictId(districtId, { limit, offset }),
+        officeRepo.countOfficesByDistrictId(districtId),
+    ]);
+
+    return {
+        district,
+        collection: buildCollection(
+            `/tuktrack/v1/districts/${districtId}/offices`,
+            offset, limit, total, offices,
         ),
     };
 }

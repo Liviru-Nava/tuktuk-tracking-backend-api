@@ -2,6 +2,8 @@
 
 import { Router } from 'express';
 import * as vehicleController from '../controllers/vehicleController.js';
+import * as assignmentController from '../controllers/assignmentController.js';
+import * as locationPingController from '../controllers/locationPingController.js';
 import { authenticate, requirePermission } from '../middleware/authMiddleware.js';
 
 const vehicleRouter = Router();
@@ -21,61 +23,61 @@ vehicleRouter.post(
 );
 
 vehicleRouter.get(
-    '/:vehicleId',
+    '/:licensePlateNo',
     requirePermission('vehicle:view'),
     vehicleController.getVehicleById,
 );
 
 vehicleRouter.put(
-    '/:vehicleId',
+    '/:licensePlateNo',
     requirePermission('vehicle:edit'),
     vehicleController.updateVehicle,
 );
 
 vehicleRouter.delete(
-    '/:vehicleId',
+    '/:licensePlateNo',
     requirePermission('vehicle:delete'),
     vehicleController.deregisterVehicle,
 );
 
 // composite endpoint — returns vehicle + owner + current driver + device in one call
 vehicleRouter.get(
-    '/:vehicleId/profile',
+    '/:licensePlateNo/profile',
     requirePermission('vehicle:view'),
     vehicleController.getVehicleFullProfile,
 );
 
 // driver assignment history for this vehicle
 vehicleRouter.get(
-    '/:vehicleId/drivers',
+    '/:licensePlateNo/drivers',
     requirePermission('assignment:view'),
-    vehicleController.getVehicleDriverHistory,
+    assignmentController.getVehicleDriverHistory,
 );
 
 // specific single assignment record
 vehicleRouter.get(
-    '/:vehicleId/assignments/:assignmentId',
+    '/:licensePlateNo/assignments/:assignmentId',
     requirePermission('assignment:view'),
-    vehicleController.getSpecificAssignment,
+    assignmentController.getSpecificAssignment,
 );
 
 // historical movement log — core brief deliverable
 vehicleRouter.get(
-    '/:vehicleId/location-pings',
+    '/:licensePlateNo/location-pings',
     requirePermission('location:view_history'),
-    vehicleController.getVehicleLocationHistory,
+    locationPingController.getVehicleLocationHistory,
 );
 
 // live view — most recent ping — core brief deliverable
 vehicleRouter.get(
-    '/:vehicleId/last-location',
+    '/:licensePlateNo/last-location',
     requirePermission('location:view_live'),
-    vehicleController.getVehicleLastLocation,
+    locationPingController.getVehicleLastLocation,
 );
 
 // status change controller — ACTIVE, SUSPENDED, FLAGGED
 vehicleRouter.post(
-    '/:vehicleId/change-status',
+    '/:licensePlateNo/change-status',
     requirePermission('vehicle:change_status'),
     vehicleController.changeVehicleStatus,
 );

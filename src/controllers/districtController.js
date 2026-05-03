@@ -25,21 +25,21 @@ export async function getDistrictById(req, res) {
   }
 }
 
-export async function getOfficesByDistrict(req, res) {
+export async function getDistrictsByProvince(req, res) {
   try {
-    const result = await districtService.getOfficesByDistrict(
-      req.params.districtId,
+    const result = await districtService.getDistrictsByProvince(
+      req.params.provinceId,
       req.query,
       req.user,
     );
     return sendCollection(
       res, 200,
-      `Offices in ${result.district.district_name} retrieved successfully`,
+      `Districts in ${result.province.province_name} retrieved successfully`,
       result.collection,
     );
   } catch (err) {
     if (err.statusCode) return sendError(res, err.statusCode, err.message);
-    console.error('[DISTRICT] getOfficesByDistrict error:', err);
+    console.error('[DISTRICT] getDistrictsByProvince error:', err);
     return sendError(res, 500, 'Internal server error');
   }
 }

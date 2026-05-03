@@ -5,7 +5,6 @@ import db from '../config/knex.js';
 const basicVehicleColumns = [
     'vehicles.vehicle_id',
     'vehicles.license_plate_no',
-    'vehicles.vehicle_reg_no',
     'vehicles.chassis_number',
     'vehicles.engine_number',
     'vehicles.make_of_vehicle',
@@ -78,7 +77,7 @@ export async function findVehicleById(vehicleId) {
     return db('vehicles')
         .join('districts', 'vehicles.district_id', 'districts.district_id')
         .join('provinces', 'districts.province_id', 'provinces.province_id')
-        .where('vehicles.vehicle_id', vehicleId)
+        .where('vehicles.license_plate_no', vehicleId)
         .select(
             ...basicVehicleColumns,
             'districts.district_name',
@@ -94,7 +93,7 @@ export async function findVehicleFullProfile(vehicleId) {
         .join('provinces', 'districts.province_id', 'provinces.province_id')
         .join('owners', 'vehicles.owner_id', 'owners.owner_id')
         .leftJoin('tracking_devices', 'vehicles.device_id', 'tracking_devices.device_id')
-        .where('vehicles.vehicle_id', vehicleId)
+        .where('vehicles.license_plate_no', vehicleId)
         .select(
             ...basicVehicleColumns,
             'districts.district_name',
@@ -117,7 +116,7 @@ export async function findVehicleFullProfile(vehicleId) {
     const currentDriverAssignment = await db('vehicle_driver_assignments')
         .join('drivers', 'vehicle_driver_assignments.driver_id', 'drivers.driver_id')
         .where({
-            'vehicle_driver_assignments.vehicle_id': vehicleId,
+            'vehicle_driver_assignments.vehicle_id': vehicleRecord.vehicle_id,
             'vehicle_driver_assignments.is_current_driver': true,
         })
         .select(
@@ -138,11 +137,16 @@ export async function findVehicleFullProfile(vehicleId) {
 }
 
 export async function findVehicleByLicensePlate(licensePlateNo) {
-    return db('vehicles').where({ license_plate_no: licensePlateNo }).first();
-}
-
-export async function findVehicleByRegNo(vehicleRegNo) {
-    return db('vehicles').where({ vehicle_reg_no: vehicleRegNo }).first();
+    return db('vehicles')
+        .join('districts', 'vehicles.district_id', 'districts.district_id')
+        .join('provinces', 'districts.province_id', 'provinces.province_id')
+        .where('vehicles.license_plate_no', licensePlateNo)
+        .select(
+            ...basicVehicleColumns,
+            'districts.district_name',
+            'provinces.province_name',
+        )
+        .first();
 }
 
 export async function findVehicleByChassisNumber(chassisNumber) {
@@ -162,7 +166,7 @@ export async function createVehicle(newVehicleData) {
 
 export async function updateVehicle(vehicleId, fieldsToUpdate) {
     const [updatedVehicle] = await db('vehicles')
-        .where({ vehicle_id: vehicleId })
+        .where({ license_plate_no: vehicleId })
         .update({ ...fieldsToUpdate, updated_time: db.fn.now() })
         .returning(basicVehicleColumns);
     return updatedVehicle;
@@ -170,138 +174,12 @@ export async function updateVehicle(vehicleId, fieldsToUpdate) {
 
 export async function changeVehicleStatus(vehicleId, newStatus) {
     const [updatedVehicle] = await db('vehicles')
-        .where({ vehicle_id: vehicleId })
+        .where({ license_plate_no: vehicleId })
         .update({ status: newStatus, updated_time: db.fn.now() })
         .returning(basicVehicleColumns);
     return updatedVehicle;
 }
 
-// get all driver assignments for a vehicle including past ones
-export async function findDriverAssignmentsByVehicleId(vehicleId, { limit, offset }) {
-    const assignmentsQuery = db('vehicle_driver_assignments')
-        .join('drivers', 'vehicle_driver_assignments.driver_id', 'drivers.driver_id')
-        .where('vehicle_driver_assignments.vehicle_id', vehicleId)
-        .select(
-            'vehicle_driver_assignments.assignment_id',
-            'vehicle_driver_assignments.vehicle_id',
-            'vehicle_driver_assignments.driver_id',
-            'vehicle_driver_assignments.assigned_time',
-            'vehicle_driver_assignments.unassigned_time',
-            'vehicle_driver_assignments.is_current_driver',
-            'vehicle_driver_assignments.is_driver_owner',
-            'drivers.driver_fullname',
-            'drivers.driver_identity_no',
-            'drivers.driver_id_type',
-            'drivers.driver_license_no',
-            'drivers.status as driver_status',
-        )
-        .orderBy('vehicle_driver_assignments.assigned_time', 'desc');
-
-    const totalCountResult = await db('vehicle_driver_assignments')
-        .where({ vehicle_id: vehicleId })
-        .count('assignment_id as count')
-        .first();
-
-    const listOfAssignments = await assignmentsQuery.limit(limit).offset(offset);
-    const totalAssignmentCount = parseInt(totalCountResult.count);
-
-    return { listOfAssignments, totalAssignmentCount };
-}
-
-export async function findAssignmentByIdAndVehicleId(assignmentId, vehicleId) {
-    return db('vehicle_driver_assignments')
-        .join('drivers', 'vehicle_driver_assignments.driver_id', 'drivers.driver_id')
-        .where({
-            'vehicle_driver_assignments.assignment_id': assignmentId,
-            'vehicle_driver_assignments.vehicle_id': vehicleId,
-        })
-        .select(
-            'vehicle_driver_assignments.assignment_id',
-            'vehicle_driver_assignments.vehicle_id',
-            'vehicle_driver_assignments.driver_id',
-            'vehicle_driver_assignments.assigned_time',
-            'vehicle_driver_assignments.unassigned_time',
-            'vehicle_driver_assignments.is_current_driver',
-            'vehicle_driver_assignments.is_driver_owner',
-            'drivers.driver_fullname',
-            'drivers.driver_identity_no',
-            'drivers.driver_license_no',
-            'drivers.status as driver_status',
-        )
-        .first();
-}
-
-// get location pings for a vehicle by going through the vehicle's device
-export async function findLocationPingsByVehicleId(vehicleId, { limit, offset, startTime, endTime }) {
-    // first get the device assigned to this vehicle
-    const vehicleWithDevice = await db('vehicles')
-        .where({ vehicle_id: vehicleId })
-        .select('device_id')
-        .first();
-
-    if (!vehicleWithDevice || !vehicleWithDevice.device_id) {
-        return { listOfPings: [], totalPingCount: 0 };
-    }
-
-    const deviceId = vehicleWithDevice.device_id;
-
-    const pingsQuery = db('location_pings')
-        .where({ device_id: deviceId })
-        .select(
-            'ping_id',
-            'device_id',
-            'latitude',
-            'longitude',
-            'ping_timestamp',
-            'speed_kmh',
-            'device_battery',
-        )
-        .orderBy('ping_timestamp', 'desc');
-
-    const countQuery = db('location_pings').where({ device_id: deviceId });
-
-    if (startTime) {
-        pingsQuery.where('ping_timestamp', '>=', startTime);
-        countQuery.where('ping_timestamp', '>=', startTime);
-    }
-
-    if (endTime) {
-        pingsQuery.where('ping_timestamp', '<=', endTime);
-        countQuery.where('ping_timestamp', '<=', endTime);
-    }
-
-    const listOfPings = await pingsQuery.limit(limit).offset(offset);
-    const totalCountResult = await countQuery.count('ping_id as count').first();
-    const totalPingCount = parseInt(totalCountResult.count);
-
-    return { listOfPings, totalPingCount };
-}
-
-// get only the single most recent ping — used for live view
-export async function findLastKnownLocationByVehicleId(vehicleId) {
-    const vehicleWithDevice = await db('vehicles')
-        .where({ vehicle_id: vehicleId })
-        .select('device_id')
-        .first();
-
-    if (!vehicleWithDevice || !vehicleWithDevice.device_id) {
-        return null;
-    }
-
-    return db('location_pings')
-        .where({ device_id: vehicleWithDevice.device_id })
-        .orderBy('ping_timestamp', 'desc')
-        .select(
-            'ping_id',
-            'device_id',
-            'latitude',
-            'longitude',
-            'ping_timestamp',
-            'speed_kmh',
-            'device_battery',
-        )
-        .first();
-}
 
 export async function countActiveAssignmentsByVehicleId(vehicleId) {
     const result = await db('vehicle_driver_assignments')

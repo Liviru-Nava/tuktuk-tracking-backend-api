@@ -36,6 +36,20 @@ function encrypt(plaintext) {
   return [iv.toString('base64'), authTag.toString('base64'), encrypted.toString('base64')].join(':');
 }
 
+/**
+ * Deterministic HMAC-SHA256 blind index.
+ * Same key + same plaintext always yields the same hex digest, which allows
+ * exact-match WHERE queries on encrypted columns without a full table scan.
+ */
+function hmac(plaintext) {
+  if (plaintext === null || plaintext === undefined) return null;
+  return crypto
+    .createHmac('sha256', getKey())
+    .update(String(plaintext))
+    .digest('hex');
+}
+
+
 // ── EXACT UUIDs from original ──────────────────
 // These match 10_assignments.js driver_id foreign keys exactly.
 // DO NOT change these values.
@@ -325,6 +339,7 @@ for (let i = 1; i <= 200; i++) {
     driver_contact_no:   encrypt(plainPhone),
     address:             encrypt(plainAddress),
     driver_license_no:   encrypt(plainLicense),
+    driver_license_no_hmac:   hmac(plainLicense),
     license_expiry_date: `${expYear}-${expMonth}-28`,
     status:              (i % 20 === 0) ? 'SUSPENDED' : 'ACTIVE',
   });

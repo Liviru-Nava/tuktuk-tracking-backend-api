@@ -4,29 +4,29 @@ import { Router } from 'express';
 import * as assignmentController from '../controllers/assignmentController.js';
 import { authenticate, requirePermission } from '../middleware/authMiddleware.js';
 
-const assignmentRouter = Router();
+const assignmentRoutes = Router();
 
-assignmentRouter.use(authenticate);
+assignmentRoutes.use(authenticate);
 
-// POST /api/v1/assignments/assign-driver
-assignmentRouter.post(
+// POST /tuktrack/v1/assign-driver
+assignmentRoutes.post(
     '/assign-driver',
     requirePermission('assignment:create'),
     assignmentController.assignDriver,
 );
 
-// POST /api/v1/assignments/unassign-driver
-assignmentRouter.post(
+// POST /tuktrack/v1/assignments/unassign-driver
+assignmentRoutes.post(
     '/unassign-driver',
     requirePermission('assignment:close'),
     assignmentController.unassignDriver,
 );
 
-// POST /api/v1/assignments/assign-device
-assignmentRouter.post(
+// POST /tuktrack/v1/assignments/assign-device
+assignmentRoutes.post(
     '/assign-device',
     requirePermission('device:assign_to_vehicle'),
     assignmentController.assignDevice,
 );
 
-export default assignmentRouter;
+export default assignmentRoutes;

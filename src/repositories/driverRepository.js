@@ -77,7 +77,7 @@ export async function findAllDriversInJurisdiction({ limit, offset, homeDistrict
 
 export async function findDriverById(driverId) {
     return db('drivers')
-        .where({ driver_id: driverId })
+        .where({ driver_license_no_hmac: driverId })
         .select(allDriverColumns)
         .first();
 }
@@ -99,7 +99,7 @@ export async function createDriver(newDriverData) {
 
 export async function updateDriver(driverId, fieldsToUpdate) {
     const [updatedDriver] = await db('drivers')
-        .where({ driver_id: driverId })
+        .where({ driver_license_no: driverId })
         .update({ ...fieldsToUpdate, updated_time: db.fn.now() })
         .returning(allDriverColumns);
     return updatedDriver;
@@ -107,7 +107,7 @@ export async function updateDriver(driverId, fieldsToUpdate) {
 
 export async function changeDriverStatus(driverId, newStatus) {
     const [updatedDriver] = await db('drivers')
-        .where({ driver_id: driverId })
+        .where({ driver_license_no: driverId })
         .update({ status: newStatus, updated_time: db.fn.now() })
         .returning(allDriverColumns);
     return updatedDriver;

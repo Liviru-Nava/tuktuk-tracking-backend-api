@@ -21,25 +21,25 @@ userRouter.post(
 );
 
 userRouter.get(
-    '/:userId',
+    '/:badgeId',
     requirePermission('user:view'),
     userController.getUserById,
 );
 
 userRouter.put(
-    '/:userId',
+    '/:badgeId',
     requirePermission('user:edit'),
     userController.updateUser,
 );
 
 userRouter.delete(
-    '/:userId',
+    '/:badgeId',
     requirePermission('user:deactivate'),
     userController.deactivateUser,
 );
 
 userRouter.post(
-    '/:userId/reset-password',
+    '/:badgeId/reset-password',
     requirePermission('user:edit'),
     userController.resetUserPassword,
 );
