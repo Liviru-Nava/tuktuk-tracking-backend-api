@@ -150,7 +150,7 @@ export async function getAllOffices(query, user) {
         if (filters.officeType)       baseQuery.where('office_type', filters.officeType);
         if (filters.jurisdictionType) baseQuery.where('jurisdiction_type', filters.jurisdictionType);
 
-        const countQuery = baseQuery.clone().clearSelect().count('office_id as count').first();
+        const countQuery = baseQuery.clone().clearSelect().clearOrder().count('office_id as count').first();
 
         const [offices, countResult] = await Promise.all([
         baseQuery.limit(limit).offset(offset),
