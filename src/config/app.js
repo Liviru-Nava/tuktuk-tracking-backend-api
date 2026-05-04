@@ -32,7 +32,12 @@ const currentFilePath = fileURLToPath(import.meta.url);
 const projectRoot = path.resolve(path.dirname(currentFilePath), '../../');
 const swaggerDocument = YAML.load(path.join(projectRoot, 'swaggerAPISpec.yaml'));
 
-app.use(helmet());
+app.use(helmet({
+    contentSecurityPolicy: false,   // prevents CSP from blocking http:// asset loads
+    hsts: false,                    // no HTTPS upgrade headers over plain HTTP
+    crossOriginOpenerPolicy: false, // removes the COOP header causing the console error
+    originAgentCluster: false,
+}));
 app.use(cors({
     origin: process.env.NODE_ENV === 'production' ? process.env.ALLOWED_ORIGINS?.split(',') : '*',
     credentials: true,
