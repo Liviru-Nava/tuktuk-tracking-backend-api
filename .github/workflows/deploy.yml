@@ -23,7 +23,8 @@ jobs:
             fi
 
             cd /home/ubuntu/tuktuk-api
-            git pull origin main
+            git fetch origin
+            git reset --hard origin/main
             npm install
 
             # Write environment file
